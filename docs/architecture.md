@@ -129,6 +129,9 @@ Ele será usado pelo worker para saber quais trabalhos estão disponíveis.
 Também poderá guardar informações necessárias para controlar tentativas e
 evitar que dois workers processem o mesmo job.
 
+O contador `attemptCount` do `ProcessingJob` será a fonte de verdade operacional
+para decidir se ainda é possível iniciar outra tentativa.
+
 ### ProcessingRun
 
 Representa uma execução do processamento.
@@ -136,11 +139,11 @@ Representa uma execução do processamento.
 Quero manter esses registros porque o processamento pode mudar ao longo do
 tempo.
 
-Por exemplo, um documento pode ser processado hoje com uma versão de prompt e
-depois ser processado novamente com outra.
+Cada tentativa iniciada cria um `ProcessingRun` com o mesmo número usado no
+`ProcessingJob.attemptCount`.
 
-Em vez de sobrescrever a execução anterior, será criado um novo
-`ProcessingRun`.
+O `ProcessingRun` existe para histórico e auditoria. Não vou calcular o limite
+de retry contando runs no banco.
 
 ### DocumentResult
 
@@ -155,12 +158,21 @@ Ele deve estar relacionado à execução que produziu aquele resultado.
 O fluxo inicial será:
 
 1. a API recebe o arquivo;
-2. valida tamanho e tipo;
-3. calcula SHA-256;
-4. verifica se o conteúdo já existe;
-5. armazena o arquivo com uma chave interna única;
-6. tenta criar o registro do documento e o job;
-7. retorna `202 Accepted`.
+2. aplica o limite de 10 MB já no parser de upload;
+3. valida tamanho restante e tipo;
+4. calcula SHA-256;
+5. verifica se o conteúdo já existe;
+6. armazena o arquivo com uma chave interna única;
+7. cria `Document` e `ProcessingJob` juntos, na mesma transação do PostgreSQL;
+8. retorna `202 Accepted`.
+
+Escolhi criar `Document` e `ProcessingJob` na mesma transação porque não quero
+que um documento seja salvo em `RECEIVED` sem um job capaz de processá-lo.
+
+Se essa transação falhar, nenhum dos dois registros deve ficar persistido.
+
+Como o arquivo local já pode ter sido salvo antes da transação, a aplicação
+tenta removê-lo como compensação.
 
 O processamento continua depois dessa resposta.
 
@@ -239,8 +251,8 @@ não conseguir ser concluída.
 Na primeira versão pretendo resolver isso com uma compensação simples:
 
 - salvar o arquivo;
-- tentar persistir o documento e o job;
-- se a persistência falhar, tentar remover o arquivo que acabou de ser salvo.
+- tentar persistir `Document` e `ProcessingJob` juntos na mesma transação;
+- se a transação falhar, tentar remover o arquivo que acabou de ser salvo.
 
 A mesma compensação vale quando duas requisições iguais passam pela verificação
 inicial e uma delas perde a corrida na restrição única de hash.
@@ -276,6 +288,10 @@ baseada em:
 
 `FOR UPDATE SKIP LOCKED`
 
+O claim do job, o incremento de `attemptCount`, a criação do `ProcessingRun`
+daquela tentativa e a mudança do documento para `PROCESSING` devem acontecer de
+forma consistente dentro da operação curta de claim.
+
 O ponto mais importante não é apenas usar o lock.
 
 O lock deve existir apenas durante o momento em que o worker pega o trabalho.
@@ -309,12 +325,32 @@ tentativa passa a contar dentro do limite de três.
 Se o worker desaparecer e o lease expirar, considero aquela tentativa como uma
 falha técnica.
 
-Ela consome uma das três tentativas e outro worker poderá recuperar o job.
+Ela consome uma das três tentativas.
 
-Escolhi contar a tentativa perdida porque, depois que o worker começou o
-processamento, não tenho como garantir que nenhuma chamada ao provider chegou a
-acontecer. Também não quero permitir reprocessamentos infinitos em caso de
-quedas repetidas.
+Não vou criar um processo separado só para procurar leases vencidos nesta
+primeira versão.
+
+A própria busca de trabalho do worker será responsável por encontrar jobs com
+lease expirado.
+
+Quando um worker encontrar um desses jobs, ele encerra a tentativa anterior
+como falha técnica e aplica as transições já permitidas pela state machine.
+
+Se ainda houver tentativa disponível:
+
+`PROCESSING -> RETRYING -> PROCESSING`
+
+e uma nova tentativa começa.
+
+Se o limite já tiver sido atingido:
+
+`PROCESSING -> RETRYING -> FAILED`
+
+Até algum worker fazer essa verificação, o documento pode continuar aparecendo
+como `PROCESSING` mesmo com o lease vencido. Nesse caso, o lease é o sinal
+operacional de que aquele processamento já pode ser recuperado.
+
+Escolhi isso para evitar adicionar um "reaper" separado só para esta entrega.
 
 Para evitar que um processamento normal seja considerado morto apenas porque o
 provider é lento, o tempo de lease deverá ser maior que o timeout configurado
@@ -374,7 +410,15 @@ aplicação.
 
 Uma execução poderá ter no máximo três tentativas no total.
 
-Cada tentativa deve ficar registrada.
+O `ProcessingJob.attemptCount` será usado para decidir operacionalmente se uma
+nova tentativa ainda pode começar.
+
+O contador é incrementado quando a tentativa realmente começa.
+
+Ao mesmo tempo, será criado um `ProcessingRun` com aquele mesmo número de
+tentativa para preservar o histórico.
+
+Assim, o job controla o limite e o run explica o que aconteceu.
 
 Um erro técnico poderá gerar outra tentativa.
 
@@ -561,6 +605,7 @@ A arquitetura assume que os documentos podem conter dados pessoais.
 
 Por isso:
 
+- o limite de 10 MB deve ser aplicado já no parser do upload;
 - arquivos não serão públicos;
 - caminhos internos não serão retornados pela API;
 - nomes enviados pelo usuário não serão usados como paths;
@@ -752,6 +797,16 @@ Exemplos:
 - enums;
 - state machine;
 - migrations.
+
+Para evitar conflito logo no início, Claude será responsável por escrever a
+primeira versão completa do `prisma/schema.prisma` e da primeira migration,
+incluindo também os modelos de processamento.
+
+Codex revisará os modelos `ProcessingJob`, `ProcessingRun` e `DocumentResult`
+antes de começar sua implementação.
+
+Se Codex entender que o schema precisa mudar, ele deve propor a alteração e
+parar para aprovação em vez de editar o arquivo compartilhado em paralelo.
 
 Depois das implementações, pretendo fazer revisão cruzada:
 
