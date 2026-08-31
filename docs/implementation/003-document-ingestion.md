@@ -204,11 +204,17 @@ repetida sem esse limite de tempo, funcionou normalmente.
 
 ## 14. CI
 
-Nenhuma alteração no workflow de CI foi necessária nesta tarefa: o job já
-existente provisiona um PostgreSQL de serviço, e a nova suíte `test:e2e`
-reaproveita a mesma infraestrutura que já era usada pelo teste e2e da
-foundation. Push e acompanhamento do run de CI referentes a este commit
-estão registrados na seção "Git" da resposta final desta tarefa.
+O workflow (`.github/workflows/ci.yml`) já provisionava um PostgreSQL de
+serviço para as migrations, mas só executava `npm test` (testes de
+unidade) — a suíte `test:e2e`, que é onde a maior parte dos testes T1–T10
+desta tarefa vive, nunca havia rodado em CI, nem para o teste e2e que já
+existia da foundation. Corrigi isso adicionando um passo `Testes e2e`
+(`npm run test:e2e`) depois do passo de testes de unidade, reaproveitando o
+mesmo contêiner de Postgres já provisionado — sem isso, a maior parte da
+cobertura automatizada exigida pelo prompt (§16) nunca seria verificada de
+fato em CI, só localmente. Push e acompanhamento dos runs de CI referentes
+aos commits desta tarefa estão registrados na seção "Git" da resposta final
+desta tarefa.
 
 ## 15. Audit
 
@@ -239,6 +245,9 @@ relatórios 001 e 002, sem mudança de status nesta tarefa. Não apliquei
   commitados como binários — decisão deliberada para manter o diff livre de
   arquivos binários, mas significa que qualquer alteração de formato requer
   editar esse gerador em vez de trocar um arquivo.
+- **CI não rodava `test:e2e` até esta tarefa** (ver seção 14) — um gap
+  pré-existente da foundation, descoberto e corrigido aqui porque a maior
+  parte dos testes T1–T10 depende de PostgreSQL real.
 - **`claimToken` (F-001) segue sem uso** nesta tarefa — o `ProcessingJob` é
   criado com o campo `null`, como esperado; a lógica de claim que o usa é
   trabalho futuro, fora de escopo.
