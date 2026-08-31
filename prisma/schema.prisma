@@ -90,11 +90,22 @@ model ProcessingJob {
   /// Campos de claim/lease usados pela query de claim com
   /// FOR UPDATE SKIP LOCKED (architecture.md §10/§11, ADR-002). Um job
   /// pode ser reivindicado quando claimedBy é nulo ou leaseExpiresAt já
-  /// passou. O worker dono do claim atual precisa ser reconferido antes
-  /// de gravar o resultado final (fencing — architecture.md §11).
+  /// passou.
   claimedBy      String?
   claimedAt      DateTime?
   leaseExpiresAt DateTime?
+
+  /// Token de fencing (F-001, confirmado na revisão humana em
+  /// docs/implementation/reviews/01-project-foundation-review.md).
+  /// claimedBy sozinho não identifica de forma única qual claim está
+  /// ativo: se o mesmo workerId for reaproveitado entre uma aquisição e
+  /// outra, um worker antigo que voltou atrasado pode ainda ser aceito
+  /// como dono válido. claimToken resolve isso — é substituído a cada
+  /// nova aquisição do job pela lógica de claim (fora do escopo desta
+  /// tarefa), nunca nasce junto com o job (por isso não tem @default) e
+  /// a futura finalização deve comparar o token apresentado pelo worker
+  /// com o valor atual desta coluna antes de gravar qualquer resultado.
+  claimToken String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
