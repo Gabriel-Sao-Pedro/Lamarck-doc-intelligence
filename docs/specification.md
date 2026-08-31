@@ -117,6 +117,11 @@ Na primeira fase serão aceitos:
 
 O tamanho máximo será de 10 MB.
 
+Quero que esse limite seja aplicado já na entrada do upload, no parser
+`multipart`, antes de aceitar um arquivo arbitrariamente grande em memória.
+Depois dessa barreira inicial, o backend continua validando o tipo e o conteúdo
+recebido.
+
 PDF será adicionado posteriormente, na Fase 2.
 
 Não vou confiar apenas na extensão do arquivo. O backend também deverá validar
@@ -136,13 +141,17 @@ O arquivo será enviado utilizando `multipart/form-data`.
 Quando um documento chegar, o sistema deverá:
 
 1. verificar se o arquivo foi enviado corretamente;
-2. validar tamanho e formato;
+2. aplicar o limite de 10 MB já no parser de upload e validar tamanho e formato;
 3. calcular um hash do arquivo;
 4. verificar se aquele mesmo arquivo já foi recebido;
 5. armazenar o documento;
 6. registrar o documento no banco;
 7. criar o processamento;
 8. responder ao sistema que fez o envio.
+
+Os passos 6 e 7 devem acontecer na mesma transação do PostgreSQL. Assim, se a
+criação do `ProcessingJob` falhar, o `Document` também não deve ficar persistido
+sozinho em `RECEIVED`.
 
 O processamento do documento acontecerá depois da resposta da API.
 
@@ -463,8 +472,8 @@ Não vou salvar o arquivo inteiro dentro do PostgreSQL.
 O banco guardará apenas informações sobre o documento e uma chave que permita
 encontrar o arquivo armazenado.
 
-Também não vou utilizar diretamente o nome enviado pelo usuário como caminho
-do arquivo.
+Também não vou utilizar diretamente o nome enviado pelo usuário como caminho do
+arquivo.
 
 Além de ser inseguro, arquivos diferentes podem chegar com o mesmo nome.
 
@@ -505,31 +514,7 @@ Uma autenticação mais completa não faz parte da primeira fase.
 
 A primeira fase estará pronta quando eu conseguir demonstrar o seguinte fluxo:
 
-`upload`
-
-→ validação
-
-→ cálculo do hash
-
-→ verificação de duplicidade
-
-→ armazenamento
-
-→ criação do documento no banco
-
-→ criação do processamento
-
-→ resposta `202`
-
-→ worker processando
-
-→ provider fake
-
-→ validação do resultado
-
-→ armazenamento do resultado
-
-→ consulta através de `GET /documents/:id`
+`upload -> validação -> cálculo do hash -> verificação de duplicidade -> armazenamento -> criação do documento no banco -> criação do processamento -> resposta 202 -> worker processando -> provider fake -> validação do resultado -> armazenamento do resultado -> consulta através de GET /documents/:id`
 
 Também quero testar os cenários mais importantes:
 
