@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { createHash } from 'node:crypto';
-import { readFile, rm } from 'node:fs/promises';
+import { readdir, readFile, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -145,11 +145,17 @@ describe('DocumentsController (e2e)', () => {
     expect(document).toBeNull();
   });
 
-  // T9 — duas tentativas concorrentes com o mesmo hash resultam em um unico documento/job
-  it('T9 — uploads concorrentes com os mesmos bytes resolvem para um unico documento', async () => {
+  // T9 — duas tentativas concorrentes com o mesmo hash resultam em um unico documento/job,
+  // e o arquivo fisico do vencedor permanece intacto (a compensacao da perdedora nao o afeta).
+  it('T9 — uploads concorrentes com os mesmos bytes resolvem para um unico documento e preservam o arquivo vencedor', async () => {
     const png = buildValidPng();
     const distinctPng = Buffer.concat([png, Buffer.from('t9-concurrent')]);
     const sha256 = createHash('sha256').update(distinctPng).digest('hex');
+
+    // cada request grava sua propria storageKey (UUID); registramos o conteudo do
+    // diretorio antes da corrida para depois isolar, por diferenca, exatamente os
+    // arquivos que sobraram apos a compensacao da request perdedora.
+    const entriesBeforeRace = new Set(await readdir(storageDir).catch(() => []));
 
     const [first, second] = await Promise.all([
       request(app.getHttpServer())
@@ -171,9 +177,21 @@ describe('DocumentsController (e2e)', () => {
 
     const documents = await prisma.document.findMany({ where: { sha256 } });
     expect(documents).toHaveLength(1);
+    const winner = documents[0];
 
-    const jobs = await prisma.processingJob.findMany({ where: { documentId: documents[0].id } });
+    const jobs = await prisma.processingJob.findMany({ where: { documentId: winner.id } });
     expect(jobs).toHaveLength(1);
+
+    // ambas as requests ja terminaram (save + eventual compensacao concluidos antes da
+    // resposta), entao o diretorio so deve ter ganhado uma unica entrada nova: a chave
+    // do vencedor. Isso prova, ao mesmo tempo, que o arquivo vencedor existe e que a
+    // perdedora nao deixou uma segunda copia permanente para tras.
+    const entriesAfterRace = await readdir(storageDir);
+    const newEntries = entriesAfterRace.filter((entry) => !entriesBeforeRace.has(entry));
+    expect(newEntries).toEqual([winner.storageKey]);
+
+    const winnerBytesOnDisk = await readFile(join(storageDir, winner.storageKey));
+    expect(winnerBytesOnDisk.equals(distinctPng)).toBe(true);
   });
 
   // T10 — banco persiste storageKey (referencia), nao o binario do arquivo
