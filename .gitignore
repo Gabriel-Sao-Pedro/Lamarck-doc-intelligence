@@ -13,9 +13,9 @@ coverage/
 *.log
 npm-debug.log*
 
-# Storage local (documentos enviados, futura implementação)
-storage/
-uploads/
+# Storage local (documentos enviados pelos usuários, gravados em disco pelo DocumentStorage)
+/storage/
+/uploads/
 
 # Temporários
 tmp/
