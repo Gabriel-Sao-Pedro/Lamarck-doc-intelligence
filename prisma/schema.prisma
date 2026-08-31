@@ -1,0 +1,163 @@
+// Lamarck DOC Intelligence — initial schema (foundation stage).
+//
+// This file represents the four entities approved in docs/architecture.md,
+// PROJECT_CONTEXT.md and the ADRs under docs/decisions/. No business logic
+// lives here — only the shape needed to support the approved concepts:
+// deduplication by SHA-256, a PostgreSQL-backed job queue with atomic
+// claim/lease, an immutable processing history, and a flexible-but-validated
+// result.
+//
+// Ownership: Claude owns this first complete version (see architecture.md
+// §26 and PROJECT_CONTEXT.md §17 — "Initial Prisma schema ownership").
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// The document state machine approved in docs/specification.md §13 and
+/// docs/architecture.md §12. Do not add or remove values without an ADR —
+/// see PROJECT_CONTEXT.md §22 (stop conditions).
+enum DocumentStatus {
+  RECEIVED
+  PROCESSING
+  RETRYING
+  COMPLETED
+  NEEDS_REVIEW
+  FAILED
+}
+
+/// Outcome of a single processing attempt (ProcessingRun), not to be
+/// confused with DocumentStatus. STARTED is set when a worker begins the
+/// attempt; the other three are terminal for that run.
+enum ProcessingRunStatus {
+  STARTED
+  SUCCEEDED
+  TECHNICAL_FAILURE
+  SEMANTIC_MISMATCH
+}
+
+/// A received document. PostgreSQL stores structured metadata and the
+/// storage key only — never the file content (ADR-003).
+model Document {
+  id        String   @id @default(uuid())
+  sha256    String   @unique
+  storageKey String  @unique
+
+  /// Free-form identifier for the document type. Kept as a plain string
+  /// (not an enum) because only one type is approved for Phase 1
+  /// (IDENTITY_DOCUMENT) and a second type is explicitly planned for
+  /// Phase 3 (docs/specification.md §24) — a string avoids a schema
+  /// migration just to add a type name later.
+  documentType String
+
+  status DocumentStatus @default(RECEIVED)
+
+  /// Upload metadata. originalFilename is informational only — it must
+  /// never be used as a filesystem path (ADR-003 / specification.md §20).
+  originalFilename String
+  mimeType         String
+  sizeBytes        Int
+
+  processingJob ProcessingJob?
+  processingRuns ProcessingRun[]
+  results       DocumentResult[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+/// Operational queue row for a document's processing. One job per document
+/// (ADR-002): retries reuse this same row instead of creating new ones —
+/// only ProcessingRun grows per attempt. attemptCount here is the
+/// operational source of truth for the 3-attempt limit (ADR-002,
+/// architecture.md §5/§13) — the retry limit must never be derived by
+/// counting ProcessingRun rows.
+model ProcessingJob {
+  id String @id @default(uuid())
+
+  documentId String   @unique
+  document   Document @relation(fields: [documentId], references: [id])
+
+  attemptCount Int @default(0)
+
+  /// Claim/lease fields used by the FOR UPDATE SKIP LOCKED claim query
+  /// (architecture.md §10/§11, ADR-002). A job is claimable when
+  /// claimedBy is null or leaseExpiresAt is in the past. The worker that
+  /// currently owns the claim must be re-checked before writing a final
+  /// result (fencing — architecture.md §11).
+  claimedBy      String?
+  claimedAt      DateTime?
+  leaseExpiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([leaseExpiresAt])
+}
+
+/// One row per processing attempt. Immutable history (ADR-005) — never
+/// updated to "fix" a past attempt; reprocessing creates a new row.
+/// attemptNumber mirrors the ProcessingJob.attemptCount value that was
+/// current when this attempt started, purely for audit purposes — it does
+/// not drive retry-limit logic.
+model ProcessingRun {
+  id String @id @default(uuid())
+
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id])
+
+  attemptNumber Int
+  status        ProcessingRunStatus @default(STARTED)
+
+  provider     String
+  model        String?
+  modelVersion String?
+
+  promptId      String?
+  promptVersion String?
+  promptHash    String?
+
+  outputSchemaVersion String?
+
+  /// Technical failure category only (e.g. "TIMEOUT", "PROVIDER_UNAVAILABLE").
+  /// Never store document content, extracted fields or any personal data
+  /// here (specification.md §21 / architecture.md §20-21).
+  technicalErrorType String?
+
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  result DocumentResult?
+
+  @@index([documentId])
+}
+
+/// Extracted result, kept separate from the document (specification.md
+/// §19). Linked to the run that produced it so history stays explainable.
+/// Structured data is stored flexibly (Json) but the application must
+/// still validate it before treating a result as valid — flexible storage
+/// does not mean accepting any structure (architecture.md §17).
+model DocumentResult {
+  id String @id @default(uuid())
+
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id])
+
+  processingRunId String        @unique
+  processingRun   ProcessingRun @relation(fields: [processingRunId], references: [id])
+
+  documentType  String
+  schemaVersion String
+  data          Json
+
+  createdAt DateTime @default(now())
+
+  @@index([documentId])
+}
