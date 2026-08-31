@@ -170,7 +170,7 @@ deduplicação entre casos, e a suíte limpa (`afterAll`) as linhas e os
 arquivos de storage que ela mesma criou.
 
 Resultado: `npm test` → 2/2 arquivos, 2/2 testes PASS. `npm run test:e2e` →
-2/2 arquivos, 9/9 testes PASS (8 desta tarefa + 1 já existente da
+2/2 arquivos, 8/8 testes PASS (7 desta tarefa + 1 já existente da
 foundation).
 
 ## 13. Validação manual
