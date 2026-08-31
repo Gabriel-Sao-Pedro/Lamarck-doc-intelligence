@@ -761,61 +761,41 @@ infraestrutura desproporcional ao que preciso demonstrar.
 
 ---
 
-## 26. Divisão de trabalho com IA
+## 26. Divisão de trabalho e revisão
 
-Durante a implementação, pretendo utilizar Claude e Codex como agentes de
-desenvolvimento.
+Durante a implementação, vou usar o Claude principalmente para acelerar a parte
+operacional do código, mas as decisões de arquitetura, escopo e aceite continuam
+comigo.
 
-Para evitar que os dois alterem a mesma parte do sistema ao mesmo tempo, defini
-responsabilidades diferentes.
+O Claude pode trabalhar em:
 
-Claude ficará principalmente responsável por:
+- estrutura do projeto;
+- API e upload;
+- storage e deduplicação;
+- processamento e worker;
+- retry e state machine;
+- histórico de processamento;
+- recursos das fases seguintes, quando eu decidir avançar.
 
-- estrutura inicial do projeto;
-- API;
-- upload;
-- storage;
-- deduplicação;
-- endpoints da Fase 2.
+As partes compartilhadas continuam controladas, principalmente:
 
-Codex ficará principalmente responsável por:
-
-- processamento;
-- worker;
-- retries;
-- state machine;
-- histórico;
-- concorrência;
-- revisão humana quando chegar à Fase 3.
-
-As partes compartilhadas não devem ser alteradas sem decisão anterior.
-
-Exemplos:
-
-- schema principal do banco;
-- contratos entre módulos;
+- `prisma/schema.prisma`;
+- migrations;
 - enums;
+- contratos entre módulos;
 - state machine;
-- migrations.
+- contratos da API.
 
-Para evitar conflito logo no início, Claude será responsável por escrever a
-primeira versão completa do `prisma/schema.prisma` e da primeira migration,
-incluindo também os modelos de processamento.
+Se uma tarefa exigir mudar algum desses pontos, a mudança deve ser apresentada
+antes de ser aplicada.
 
-Codex revisará os modelos `ProcessingJob`, `ProcessingRun` e `DocumentResult`
-antes de começar sua implementação.
+A revisão final das mudanças é humana. Eu quero conferir principalmente se o
+código continua de acordo com a especificação, se os testes fazem sentido e se
+consigo explicar a decisão tomada.
 
-Se Codex entender que o schema precisa mudar, ele deve propor a alteração e
-parar para aprovação em vez de editar o arquivo compartilhado em paralelo.
-
-Depois das implementações, pretendo fazer revisão cruzada:
-
-Codex revisa partes feitas pelo Claude.
-
-Claude revisa partes feitas pelo Codex.
-
-A ideia é utilizar os agentes não apenas para gerar código, mas também para
-encontrar problemas no trabalho um do outro.
+Se uma correção começar a virar uma nova implementação, prefiro separar uma
+nova tarefa e devolver a implementação ao Claude em vez de alterar muita
+coisa manualmente durante a revisão.
 
 ---
 

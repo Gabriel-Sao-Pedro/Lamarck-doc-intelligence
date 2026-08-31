@@ -19,7 +19,7 @@
 
 ## 2. Por que isso existe
 
-Esta tarefa prepara a base técnica (aplicação reproduzível, schema compartilhado, CI) para que as próximas tarefas — ingestão/API (Claude) e processamento/worker (Codex) — possam ser implementadas sobre uma fundação já validada, sem que cada uma precise reinventar a configuração de NestJS/Prisma/Docker.
+Esta tarefa prepara a base técnica (aplicação reproduzível, schema compartilhado, CI) para que as próximas tarefas — ingestão/API e processamento/worker, ambas pelo Claude — possam ser implementadas sobre uma fundação já validada, sem que cada uma precise reinventar a configuração de NestJS/Prisma/Docker.
 
 ## 3. Fluxo de execução
 
@@ -94,6 +94,8 @@ Porque ele precisa ser incrementado atomicamente no mesmo claim que marca o work
 
 `claimedBy` funciona como token de propriedade: antes de gravar um resultado final, a aplicação (ainda não implementada) pode comparar o `claimedBy` que ela tem em mão com o valor atual da linha — se não bater (outro worker já reclamou o job por lease expirado), a escrita é rejeitada. O schema já guarda o dado necessário; a verificação em si é lógica de aplicação, fora do escopo desta tarefa.
 
+**Nota após revisão:** essa conclusão estava incompleta. A revisão da foundation mostrou que `claimedBy` não identifica de forma única um claim quando o mesmo identificador de worker pode ser reutilizado. A correção planejada é adicionar `claimToken`. Ver `docs/implementation/reviews/01-project-foundation-cross-review.md`.
+
 ### Como `DocumentResult` será flexível sem abandonar validação na aplicação
 
 O campo `data` é `Json` — aceita qualquer estrutura no banco. A validação forte (campos obrigatórios, tipos, formatos — Check 1/Check 2 de `specification.md` §16) é responsabilidade da aplicação antes de decidir que um resultado é válido; o schema não impõe essa validação porque tipos de documento diferentes (Fase 3) terão estruturas diferentes.
@@ -156,14 +158,14 @@ Nenhum PASS foi marcado sem execução real.
 
 ## 13. Proveniência de IA
 
-### Gerado pelo agente
+### Gerado pelo Claude
 Toda a foundation (scaffold NestJS, schema Prisma, migration, Docker Compose, README, CI, `PrismaService`/`DatabaseModule`) foi gerada por mim nesta tarefa, a partir do prompt em `docs/ai/prompts/claude/01-claude-project-foundation-prompt.md`.
 
 ### Modificações humanas posteriores
 Nenhuma até o momento deste relatório.
 
-### Revisão cruzada
-- Revisor: pendente (Codex, conforme `PROJECT_CONTEXT.md` §18)
+### Revisão humana
+- Revisor: pendente (conforme `PROJECT_CONTEXT.md` §18)
 - Findings: N/A ainda
 - Correções: N/A ainda
 
@@ -192,6 +194,6 @@ Ver seção "17. Git" do relatório de resposta (fora deste arquivo), com `git s
 
 ## 18. Próximo passo recomendado
 
-`revisar a foundation e, depois de aprovada, iniciar Claude em ingestion/API e Codex em processing em branches separadas`
+`revisar a foundation (revisão humana) e, depois de aprovada, iniciar o Claude na implementação de ingestion/API e, em seguida, de processing/worker, cada uma em sua própria branch`
 
 Não executei esse próximo passo.

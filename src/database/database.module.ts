@@ -2,9 +2,9 @@ import { Global, Module } from '@nestjs/common';
 import { PrismaService } from './prisma.service.js';
 
 /**
- * Global module exposing a single PrismaService instance to the rest of
- * the application. No domain repositories live here yet — this is
- * foundation-stage wiring only.
+ * Módulo global que expõe uma única instância do PrismaService para o
+ * resto da aplicação. Nenhum repositório de domínio vive aqui ainda — é
+ * só a conexão da fase de foundation.
  */
 @Global()
 @Module({

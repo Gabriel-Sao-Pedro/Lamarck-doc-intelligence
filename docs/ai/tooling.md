@@ -1,31 +1,33 @@
-# AI Tooling
+# Ferramentas de IA
 
 ## Claude Code
 
 Versão: 2.1.211
 Ambiente: Windows 11 Pro, Node.js v24.16.0, npm 11.13.0, Git 2.55.0
 
-## Project instructions
+## Instruções do projeto
 
 - `CLAUDE.md` — na raiz do projeto. Carregado automaticamente pelo Claude
   Code como instrução de projeto.
-- `AGENTS.md` — na raiz do projeto. Instruções equivalentes para o Codex.
+- `AGENTS.md` — na raiz do projeto. Regras gerais de trabalho para o Claude.
 - `PROJECT_CONTEXT.md` — na raiz do projeto, ao lado dos dois acima (ambos o
-  referenciam como leitura obrigatória). Contexto operacional compartilhado
-  entre os agentes.
+  referenciam como leitura obrigatória). Contexto operacional do Claude
+  neste projeto.
 - Skill `doc-intelligence-backend` — complementa `CLAUDE.md`/`AGENTS.md` com
   regras de domínio específicas; ver seção Skills abaixo.
 
   Correção de estrutura: `CLAUDE.md`, `AGENTS.md` e `PROJECT_CONTEXT.md`
-  estavam originalmente em `docs/` e foram movidos para a raiz nesta tarefa,
-  pois é ali que o Claude Code e o Codex os carregam automaticamente.
+  estavam originalmente em `docs/` e foram movidos para a raiz nesta tarefa.
+  Só `CLAUDE.md` é carregado automaticamente pelo Claude Code — `AGENTS.md`
+  e `PROJECT_CONTEXT.md` são lidos porque `CLAUDE.md` manda lê-los no início
+  de qualquer tarefa, não por carregamento automático da ferramenta.
 
 ## Skills
 
 ### `doc-intelligence-backend`
 - Origem: local, escrita especificamente para este projeto nesta preparação.
 - Escopo: projeto (`.claude/skills/doc-intelligence-backend/SKILL.md`).
-- Finalidade: define como o agente deve trabalhar neste backend — leitura
+- Finalidade: define como o Claude deve trabalhar neste backend — leitura
   obrigatória de spec/arquitetura/ADRs antes de implementar, regras da state
   machine do documento, atomicidade/concorrência em jobs, deduplicação por
   SHA-256, regras de PII em logs, e o checklist de conclusão de tarefa

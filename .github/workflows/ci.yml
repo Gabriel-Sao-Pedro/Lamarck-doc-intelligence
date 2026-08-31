@@ -27,25 +27,25 @@ jobs:
       DATABASE_URL: postgresql://lamarck:lamarck@localhost:5432/lamarck_doc_intelligence?schema=public
 
     steps:
-      - name: Checkout
+      - name: Baixar o código
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Configurar o Node
         uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
           cache: "npm"
 
-      - name: Install dependencies
+      - name: Instalar dependências
         run: npm ci
 
-      - name: Validate Prisma schema
+      - name: Validar schema do Prisma
         run: npm run prisma:validate
 
-      - name: Generate Prisma client
+      - name: Gerar client do Prisma
         run: npm run prisma:generate
 
-      - name: Apply migrations
+      - name: Aplicar migrations
         run: npm run prisma:migrate:deploy
 
       - name: Lint
@@ -54,5 +54,5 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Test
+      - name: Testes
         run: npm test

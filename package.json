@@ -1,7 +1,7 @@
 {
   "name": "lamarck-doc-intelligence",
   "version": "0.0.1",
-  "description": "DOC Intelligence backend — Lamarck challenge (foundation stage, no business logic yet)",
+  "description": "Backend do DOC Intelligence — desafio Lamarck (fase de foundation, ainda sem regra de negócio)",
   "author": "",
   "private": true,
   "license": "UNLICENSED",

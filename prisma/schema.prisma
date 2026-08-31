@@ -1,14 +1,14 @@
-// Lamarck DOC Intelligence — initial schema (foundation stage).
+// Lamarck DOC Intelligence — schema inicial (fase de foundation).
 //
-// This file represents the four entities approved in docs/architecture.md,
-// PROJECT_CONTEXT.md and the ADRs under docs/decisions/. No business logic
-// lives here — only the shape needed to support the approved concepts:
-// deduplication by SHA-256, a PostgreSQL-backed job queue with atomic
-// claim/lease, an immutable processing history, and a flexible-but-validated
-// result.
+// Este arquivo representa as quatro entidades aprovadas em docs/architecture.md,
+// PROJECT_CONTEXT.md e nos ADRs em docs/decisions/. Nenhuma regra de negócio
+// vive aqui — só a estrutura necessária para suportar os conceitos aprovados:
+// deduplicação por SHA-256, fila de jobs persistida no PostgreSQL com
+// claim/lease atômico, histórico imutável de processamento e um resultado
+// flexível mas validado.
 //
-// Ownership: Claude owns this first complete version (see architecture.md
-// §26 and PROJECT_CONTEXT.md §17 — "Initial Prisma schema ownership").
+// Ownership: Claude é dono desta primeira versão completa (ver architecture.md
+// §26 e PROJECT_CONTEXT.md §17 — "Ownership do schema Prisma inicial").
 
 generator client {
   provider = "prisma-client"
@@ -19,9 +19,9 @@ datasource db {
   provider = "postgresql"
 }
 
-/// The document state machine approved in docs/specification.md §13 and
-/// docs/architecture.md §12. Do not add or remove values without an ADR —
-/// see PROJECT_CONTEXT.md §22 (stop conditions).
+/// A state machine do documento aprovada em docs/specification.md §13 e
+/// docs/architecture.md §12. Não adicione nem remova valores sem um ADR —
+/// ver PROJECT_CONTEXT.md §22 (condições de parada).
 enum DocumentStatus {
   RECEIVED
   PROCESSING
@@ -31,9 +31,9 @@ enum DocumentStatus {
   FAILED
 }
 
-/// Outcome of a single processing attempt (ProcessingRun), not to be
-/// confused with DocumentStatus. STARTED is set when a worker begins the
-/// attempt; the other three are terminal for that run.
+/// Resultado de uma única tentativa de processamento (ProcessingRun), não
+/// confundir com DocumentStatus. STARTED é definido quando um worker começa
+/// a tentativa; os outros três são estados terminais para aquele run.
 enum ProcessingRunStatus {
   STARTED
   SUCCEEDED
@@ -41,24 +41,24 @@ enum ProcessingRunStatus {
   SEMANTIC_MISMATCH
 }
 
-/// A received document. PostgreSQL stores structured metadata and the
-/// storage key only — never the file content (ADR-003).
+/// Um documento recebido. O PostgreSQL guarda metadata estruturada e a
+/// storage key apenas — nunca o conteúdo do arquivo (ADR-003).
 model Document {
   id        String   @id @default(uuid())
   sha256    String   @unique
   storageKey String  @unique
 
-  /// Free-form identifier for the document type. Kept as a plain string
-  /// (not an enum) because only one type is approved for Phase 1
-  /// (IDENTITY_DOCUMENT) and a second type is explicitly planned for
-  /// Phase 3 (docs/specification.md §24) — a string avoids a schema
-  /// migration just to add a type name later.
+  /// Identificador livre do tipo de documento. Mantido como string simples
+  /// (não enum) porque só um tipo está aprovado para a Fase 1
+  /// (IDENTITY_DOCUMENT) e um segundo tipo já está planejado para a
+  /// Fase 3 (docs/specification.md §24) — uma string evita uma migration
+  /// só para adicionar um nome de tipo depois.
   documentType String
 
   status DocumentStatus @default(RECEIVED)
 
-  /// Upload metadata. originalFilename is informational only — it must
-  /// never be used as a filesystem path (ADR-003 / specification.md §20).
+  /// Metadados do upload. originalFilename é só informativo — nunca deve
+  /// ser usado como path no filesystem (ADR-003 / specification.md §20).
   originalFilename String
   mimeType         String
   sizeBytes        Int
@@ -73,12 +73,12 @@ model Document {
   @@index([status])
 }
 
-/// Operational queue row for a document's processing. One job per document
-/// (ADR-002): retries reuse this same row instead of creating new ones —
-/// only ProcessingRun grows per attempt. attemptCount here is the
-/// operational source of truth for the 3-attempt limit (ADR-002,
-/// architecture.md §5/§13) — the retry limit must never be derived by
-/// counting ProcessingRun rows.
+/// Linha operacional da fila para o processamento de um documento. Um job
+/// por documento (ADR-002): retries reaproveitam esta mesma linha em vez
+/// de criar novas — só o ProcessingRun cresce por tentativa. attemptCount
+/// aqui é a fonte de verdade operacional do limite de 3 tentativas
+/// (ADR-002, architecture.md §5/§13) — o limite de retry nunca deve ser
+/// derivado contando linhas de ProcessingRun.
 model ProcessingJob {
   id String @id @default(uuid())
 
@@ -87,11 +87,11 @@ model ProcessingJob {
 
   attemptCount Int @default(0)
 
-  /// Claim/lease fields used by the FOR UPDATE SKIP LOCKED claim query
-  /// (architecture.md §10/§11, ADR-002). A job is claimable when
-  /// claimedBy is null or leaseExpiresAt is in the past. The worker that
-  /// currently owns the claim must be re-checked before writing a final
-  /// result (fencing — architecture.md §11).
+  /// Campos de claim/lease usados pela query de claim com
+  /// FOR UPDATE SKIP LOCKED (architecture.md §10/§11, ADR-002). Um job
+  /// pode ser reivindicado quando claimedBy é nulo ou leaseExpiresAt já
+  /// passou. O worker dono do claim atual precisa ser reconferido antes
+  /// de gravar o resultado final (fencing — architecture.md §11).
   claimedBy      String?
   claimedAt      DateTime?
   leaseExpiresAt DateTime?
@@ -102,11 +102,11 @@ model ProcessingJob {
   @@index([leaseExpiresAt])
 }
 
-/// One row per processing attempt. Immutable history (ADR-005) — never
-/// updated to "fix" a past attempt; reprocessing creates a new row.
-/// attemptNumber mirrors the ProcessingJob.attemptCount value that was
-/// current when this attempt started, purely for audit purposes — it does
-/// not drive retry-limit logic.
+/// Uma linha por tentativa de processamento. Histórico imutável (ADR-005)
+/// — nunca é atualizada para "corrigir" uma tentativa passada; reprocessar
+/// cria uma nova linha. attemptNumber espelha o valor de
+/// ProcessingJob.attemptCount vigente quando essa tentativa começou, só
+/// para fins de auditoria — não guia a lógica de limite de retry.
 model ProcessingRun {
   id String @id @default(uuid())
 
@@ -126,9 +126,9 @@ model ProcessingRun {
 
   outputSchemaVersion String?
 
-  /// Technical failure category only (e.g. "TIMEOUT", "PROVIDER_UNAVAILABLE").
-  /// Never store document content, extracted fields or any personal data
-  /// here (specification.md §21 / architecture.md §20-21).
+  /// Só a categoria da falha técnica (ex.: "TIMEOUT", "PROVIDER_UNAVAILABLE").
+  /// Nunca guarde aqui conteúdo do documento, campos extraídos ou qualquer
+  /// dado pessoal (specification.md §21 / architecture.md §20-21).
   technicalErrorType String?
 
   startedAt  DateTime  @default(now())
@@ -139,11 +139,12 @@ model ProcessingRun {
   @@index([documentId])
 }
 
-/// Extracted result, kept separate from the document (specification.md
-/// §19). Linked to the run that produced it so history stays explainable.
-/// Structured data is stored flexibly (Json) but the application must
-/// still validate it before treating a result as valid — flexible storage
-/// does not mean accepting any structure (architecture.md §17).
+/// Resultado extraído, mantido separado do documento (specification.md
+/// §19). Ligado à execução que o produziu para o histórico continuar
+/// explicável. Os dados estruturados ficam flexíveis (Json), mas a
+/// aplicação ainda precisa validá-los antes de tratar um resultado como
+/// válido — armazenamento flexível não significa aceitar qualquer
+/// estrutura (architecture.md §17).
 model DocumentResult {
   id String @id @default(uuid())
 

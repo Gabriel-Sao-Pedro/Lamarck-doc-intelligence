@@ -402,7 +402,7 @@ Não escolha silenciosamente algo que mude:
 - state machine;
 - política de retry;
 - contrato HTTP;
-- ownership Claude/Codex;
+- divisão de responsabilidades entre Claude e revisão humana;
 - estratégia de fila;
 - estratégia de storage;
 - deduplicação;
@@ -607,7 +607,7 @@ Inclua especialmente:
 - como reproduzir localmente;
 - decisões pequenas tomadas durante scaffolding;
 - riscos;
-- partes geradas pelo agente;
+- partes geradas pelo Claude;
 - qualquer modificação manual posterior, se houver.
 
 Não diga que algo foi escrito manualmente se foi gerado por você.
@@ -761,7 +761,7 @@ Mostre:
 
 O próximo passo esperado é:
 
-`revisar a foundation e, depois de aprovada, iniciar Claude em ingestion/API e Codex em processing em branches separadas`
+`revisar a foundation e, depois de aprovada, iniciar o Claude na implementação de ingestion/API e, em seguida, de processing/worker, cada uma em sua própria branch`
 
 NÃO execute esse próximo passo.
 

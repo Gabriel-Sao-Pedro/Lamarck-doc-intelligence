@@ -5,7 +5,7 @@ description: Regras de trabalho para o backend DOC Intelligence (NestJS/Prisma/P
 
 # DOC Intelligence Backend
 
-Esta skill não é um tutorial genérico de NestJS. Ela define como o agente deve
+Esta skill não é um tutorial genérico de NestJS. Ela define como o Claude deve
 se comportar especificamente neste projeto.
 
 ## Antes de implementar qualquer tarefa

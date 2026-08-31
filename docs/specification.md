@@ -621,5 +621,5 @@ Vou registrar:
 - qual foi o impacto.
 
 Além da especificação, o projeto terá registros das principais decisões,
-histórico de commits, prompts utilizados com os agentes e os problemas
+histórico de commits, prompts utilizados com o Claude e os problemas
 encontrados durante implementação e testes.

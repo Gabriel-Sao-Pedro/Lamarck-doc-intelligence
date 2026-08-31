@@ -65,11 +65,11 @@ Se não aplicável:
 
 | Check | Comando/Teste | Resultado |
 |---|---|---|
-| Build | | PASS / FAIL / NOT RUN |
-| Lint | | PASS / FAIL / NOT RUN |
-| Unit | | PASS / FAIL / NOT RUN |
-| Integration | | PASS / FAIL / NOT RUN |
-| Smoke manual | | PASS / FAIL / NOT RUN |
+| Build | | PASS / FAIL / NÃO EXECUTADO |
+| Lint | | PASS / FAIL / NÃO EXECUTADO |
+| Unit | | PASS / FAIL / NÃO EXECUTADO |
+| Integration | | PASS / FAIL / NÃO EXECUTADO |
+| Smoke manual | | PASS / FAIL / NÃO EXECUTADO |
 
 Nunca marcar PASS sem executar.
 
@@ -94,13 +94,13 @@ Incluir:
 
 ## 13. Proveniência de IA
 
-### Gerado pelo agente
+### Gerado pelo Claude
 - 
 
 ### Modificações humanas posteriores
 - 
 
-### Revisão cruzada
+### Revisão humana
 - Revisor:
 - Findings:
 - Correções:

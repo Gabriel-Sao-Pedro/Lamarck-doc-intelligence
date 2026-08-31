@@ -1,22 +1,22 @@
-# Lamarck DOC Intelligence — Project Context
+# Lamarck DOC Intelligence — Contexto do Projeto
 
-> Operational context shared by Claude and Codex.
-> This file summarizes decisions already made by the project owner.
-> It does **not** replace `docs/specification.md`, `docs/architecture.md` or ADRs.
-> If this file conflicts with those human-owned documents, stop and ask for clarification.
+> Contexto operacional usado pelo Claude durante a implementação.
+> Este arquivo resume decisões já tomadas pelo responsável pelo projeto.
+> Ele **não** substitui `docs/specification.md`, `docs/architecture.md` nem os ADRs.
+> Se este arquivo conflitar com esses documentos humanos, pare e peça esclarecimento.
 
-## 1. Goal
+## 1. Objetivo
 
-Build the backend track of the DOC Intelligence challenge.
+Construir a trilha de backend do desafio DOC Intelligence.
 
-The delivery prioritizes:
-- architecture and modularity;
-- traceable decisions;
-- controlled use of AI agents;
-- specification before implementation;
-- one honest vertical slice before broader product coverage.
+A entrega prioriza:
+- arquitetura e modularidade;
+- decisões rastreáveis;
+- uso controlado de agentes de IA;
+- especificação antes da implementação;
+- uma vertical slice honesta antes de ampliar a cobertura do produto.
 
-Project name: `Lamarck-doc-intelligence`.
+Nome do projeto: `Lamarck-doc-intelligence`.
 
 ## 2. Stack
 
@@ -29,143 +29,144 @@ Project name: `Lamarck-doc-intelligence`.
 - REST API
 - npm
 
-Development model:
-- NestJS application runs locally with npm.
-- PostgreSQL runs through Docker Compose.
+Modelo de desenvolvimento:
+- a aplicação NestJS roda localmente com npm.
+- o PostgreSQL roda via Docker Compose.
 
-## 3. Initial document type
+## 3. Tipo de documento inicial
 
-Phase 1 uses one fictional identity document type:
+A Fase 1 usa um tipo de documento de identidade fictício:
 
 `IDENTITY_DOCUMENT`
 
-Required fields:
+Campos obrigatórios:
 - `fullName`
 - `parentage`
 - `birthDate`
 - `documentNumber`
 - `issuingAuthority`
 
-Only fictitious documents may be used in tests and examples.
+Só documentos fictícios podem ser usados em testes e exemplos.
 
 ## 4. Upload
 
-Phase 1 accepts:
+A Fase 1 aceita:
 - JPG
 - JPEG
 - PNG
 
-Maximum file size:
+Tamanho máximo do arquivo:
 - 10 MB
 
-The 10 MB limit must be enforced at the multipart upload/parser boundary before
-accepting an arbitrarily large file into memory. Content/type validation still
-happens after that initial limit check.
+O limite de 10 MB precisa ser aplicado na fronteira do parser de upload
+multipart, antes de aceitar um arquivo arbitrariamente grande em memória. A
+validação de conteúdo/tipo continua acontecendo depois dessa checagem
+inicial de limite.
 
-Phase 2 adds:
+A Fase 2 adiciona:
 - PDF
 
-Planned endpoint:
+Endpoint planejado:
 
 `POST /documents`
 
-Expected behavior:
-1. receive multipart upload;
-2. enforce upload size limit;
-3. validate actual content/type, not only file extension;
-4. calculate SHA-256 over received bytes;
-5. check exact binary duplication;
-6. store the original document;
-7. create `Document` and `ProcessingJob` in the same PostgreSQL transaction;
-8. return immediately without waiting for intelligence processing.
+Comportamento esperado:
+1. receber o upload multipart;
+2. aplicar o limite de tamanho do upload;
+3. validar o conteúdo/tipo real, não só a extensão do arquivo;
+4. calcular o SHA-256 sobre os bytes recebidos;
+5. checar duplicação binária exata;
+6. armazenar o documento original;
+7. criar `Document` e `ProcessingJob` na mesma transação do PostgreSQL;
+8. responder imediatamente sem esperar o processamento de inteligência.
 
-HTTP response:
-- use `202 Accepted` for a new document;
-- current project decision is to also return `202 Accepted` for an exact duplicate while returning the existing document reference.
+Resposta HTTP:
+- usar `202 Accepted` para um documento novo;
+- decisão atual do projeto: também retornar `202 Accepted` para uma duplicata exata, devolvendo a referência do documento existente.
 
-This duplicate-response decision is intentional but may be revisited later through an ADR/implementation note.
+Essa decisão de resposta para duplicatas é intencional, mas pode ser revisitada depois por um ADR/nota de implementação.
 
-## 5. Deduplication
+## 5. Deduplicação
 
-Phase 1:
-- exact deduplication by SHA-256 of the raw bytes.
+Fase 1:
+- deduplicação exata por SHA-256 dos bytes crus.
 
-If the hash already exists:
-- do not create a second document;
-- do not create a second processing job;
-- return the existing document reference.
+Se o hash já existir:
+- não criar um segundo documento;
+- não criar um segundo job de processamento;
+- retornar a referência do documento existente.
 
-Known limitation:
-SHA-256 does not identify the same physical document when it is:
-- photographed again;
-- recompressed;
-- resized;
-- regenerated as PDF;
-- otherwise changed at byte level.
+Limitação conhecida:
+o SHA-256 não identifica o mesmo documento físico quando ele é:
+- fotografado de novo;
+- recomprimido;
+- redimensionado;
+- regenerado como PDF;
+- alterado de qualquer outra forma em nível de bytes.
 
-Perceptual/semantic duplicate detection is not Phase 1.
+Detecção perceptual/semântica de duplicata não é Fase 1.
 
-## 6. Async processing
+## 6. Processamento assíncrono
 
-Processing must be asynchronous.
+O processamento precisa ser assíncrono.
 
-Reason:
-the external multimodal provider in the target system may take 5–40 seconds and may fail or stop responding.
+Motivo:
+o provider multimodal externo no sistema-alvo pode levar de 5 a 40 segundos e pode falhar ou parar de responder.
 
-Phase 1 queue:
-- PostgreSQL-backed persistent job queue.
+Fila da Fase 1:
+- fila de jobs persistida no PostgreSQL.
 
-Do not add in Phase 1:
+Não adicionar na Fase 1:
 - Redis
 - RabbitMQ
 - Kafka
 - SQS
 
-`Document` and `ProcessingJob` are created in the same database transaction so a
-document cannot remain persisted in `RECEIVED` without a job because of a
-partial database write.
+`Document` e `ProcessingJob` são criados na mesma transação de banco para que
+um documento não fique persistido em `RECEIVED` sem um job por causa de uma
+escrita parcial no banco.
 
-The implementation must prevent two workers from processing the same job at the same time.
+A implementação precisa impedir que dois workers processem o mesmo job ao mesmo tempo.
 
-Operational retry source of truth:
+Fonte de verdade operacional do retry:
 - `ProcessingJob.attemptCount`.
 
-Historical record:
-- each started attempt creates a `ProcessingRun` with the same attempt number.
+Registro histórico:
+- cada tentativa iniciada cria um `ProcessingRun` com o mesmo número de tentativa.
 
-Do not derive the retry limit by counting `ProcessingRun` rows.
+Não derive o limite de retry contando linhas de `ProcessingRun`.
 
-Job claiming should be short and atomic:
-- claim the job;
-- increment `attemptCount`;
-- create the matching `ProcessingRun`;
-- update the document state consistently;
-- commit before calling the provider.
+O claim do job deve ser curto e atômico:
+- reivindicar o job;
+- incrementar `attemptCount`;
+- criar o `ProcessingRun` correspondente;
+- atualizar o estado do documento de forma consistente;
+- commitar antes de chamar o provider.
 
-The project contains PostgreSQL concurrency guidance intended for:
-- transactions;
+O projeto contém material de apoio de concorrência PostgreSQL voltado para:
+- transações;
 - row locking;
 - `FOR UPDATE SKIP LOCKED`;
-- short transactions;
-- deadlock prevention;
-- atomic claiming.
+- transações curtas;
+- prevenção de deadlock;
+- claim atômico.
 
-Expired leases:
-- no separate reaper is required in Phase 1;
-- the worker claim query also considers jobs whose lease has expired;
-- when a stale job is found, the previous attempt is treated as technical failure;
-- if retries remain, transition `PROCESSING -> RETRYING -> PROCESSING`;
-- if the limit is exhausted, transition `PROCESSING -> RETRYING -> FAILED`;
-- until another worker performs this check, `Document.status` may still show `PROCESSING`, while the expired lease is the operational signal that the job is recoverable.
+Leases expirados:
+- nenhum reaper separado é necessário na Fase 1;
+- a própria query de claim do worker também considera jobs cujo lease já expirou;
+- quando um job parado é encontrado, a tentativa anterior é tratada como falha técnica;
+- se ainda houver tentativas disponíveis, a transição é `PROCESSING -> RETRYING -> PROCESSING`;
+- se o limite estiver esgotado, a transição é `PROCESSING -> RETRYING -> FAILED`;
+- até algum worker fazer essa checagem, `Document.status` pode continuar mostrando `PROCESSING`, enquanto o lease expirado é o sinal operacional de que o job pode ser recuperado.
 
-The lease duration must be longer than the provider timeout plus a safety margin.
+A duração do lease precisa ser maior que o timeout do provider mais uma margem de segurança.
 
-A worker that lost lease ownership must not persist the final result without
-first proving that its claim is still valid.
+Um worker que perdeu a posse do lease não pode persistir o resultado final
+sem antes provar que seu claim ainda é válido.
 
 ## 7. State machine
 
-Valid states:
+Estados válidos:
 
 - `RECEIVED`
 - `PROCESSING`
@@ -174,7 +175,7 @@ Valid states:
 - `NEEDS_REVIEW`
 - `FAILED`
 
-Initially allowed transitions:
+Transições permitidas inicialmente:
 
 - `RECEIVED -> PROCESSING`
 - `PROCESSING -> COMPLETED`
@@ -183,327 +184,322 @@ Initially allowed transitions:
 - `RETRYING -> PROCESSING`
 - `RETRYING -> FAILED`
 
-Do not introduce new transitions silently.
+Não introduza novas transições silenciosamente.
 
-## 8. Retry policy
+## 8. Política de retry
 
-Maximum:
-- 3 total attempts, including the first attempt.
+Máximo:
+- 3 tentativas totais, incluindo a primeira.
 
-Technical/provider failure:
+Falha técnica/do provider:
 - retry.
 
-Semantic inconsistency:
+Inconsistência semântica:
 - `NEEDS_REVIEW`.
 
-After the third failed technical attempt:
+Depois da terceira tentativa técnica falhada:
 - `FAILED`.
 
-A worker loss after an attempt has started counts as a technical failure for
-that attempt.
+A perda de um worker depois que uma tentativa já começou conta como falha
+técnica para aquela tentativa.
 
-Do not hold a database lock while waiting for the external intelligence provider.
+Não segure um lock de banco enquanto espera o provider de inteligência externo.
 
-## 9. Intelligence provider boundary
+## 9. Fronteira do provider de inteligência
 
-The application must depend on an abstraction such as:
+A aplicação precisa depender de uma abstração como:
 
 `DocumentIntelligenceProvider`
 
-Phase 1 implementation:
+Implementação da Fase 1:
 - `FakeDocumentIntelligenceProvider`
 
-The fake should support controlled scenarios:
-- success;
-- semantic inconsistency;
-- technical failure.
+O fake deve suportar cenários controlados:
+- sucesso;
+- inconsistência semântica;
+- falha técnica.
 
-A real multimodal provider is Phase 3.
+Um provider multimodal real é Fase 3.
 
-## 10. Validation
+## 10. Validação
 
-Two-stage validation is planned.
+Está planejada uma validação em duas etapas.
 
-### Check 1 — deterministic
-Validate:
-- required fields;
-- types;
-- formats;
-- structural validity.
+### Check 1 — determinístico
+Validar:
+- campos obrigatórios;
+- tipos;
+- formatos;
+- validade estrutural.
 
-### Check 2 — document verification
-Verify that extracted values are supported by the document.
+### Check 2 — verificação do documento
+Verificar se os valores extraídos são sustentados pelo documento.
 
-Only when both checks pass:
+Só quando os dois checks passarem:
 - `COMPLETED`.
 
-Otherwise:
+Caso contrário:
 - `NEEDS_REVIEW`.
 
-A filled field is not automatically a correct field.
+Um campo preenchido não é automaticamente um campo correto.
 
-## 11. Persistence
+## 11. Persistência
 
-Planned entities:
+Entidades planejadas:
 - `Document`
 - `ProcessingJob`
 - `ProcessingRun`
 - `DocumentResult`
 
-`ProcessingRun` is historical and immutable.
+`ProcessingRun` é histórico e imutável.
 
-A processing run should preserve enough provenance to explain how a result was produced, including:
+Uma execução de processamento deve preservar proveniência suficiente para explicar como um resultado foi produzido, incluindo:
 - provider;
-- model;
-- model version;
-- prompt identifier/version/hash;
-- output schema version;
-- attempt;
+- modelo;
+- versão do modelo;
+- identificador/versão/hash do prompt;
+- versão do schema de saída;
+- tentativa;
 - status;
-- started/finished timestamps.
+- timestamps de início/fim.
 
-Reprocessing creates a new run.
-Do not overwrite old runs.
+Reprocessar cria uma nova execução.
+Não sobrescreva execuções antigas.
 
-## 12. File storage
+## 12. Armazenamento de arquivos
 
-Use a boundary such as:
+Use uma fronteira como:
 
 `DocumentStorage`
 
-Phase 1:
+Fase 1:
 - `LocalDocumentStorage`
 
-PostgreSQL stores structured metadata and a storage key.
-Do not store the complete document blob in PostgreSQL.
+O PostgreSQL guarda metadata estruturada e uma storage key.
+Não armazene o blob completo do documento no PostgreSQL.
 
-The user-provided filename must never be used directly as a filesystem path.
+O nome de arquivo fornecido pelo usuário nunca deve ser usado diretamente como path no filesystem.
 
-Potential production evolution:
-- object storage/S3-compatible adapter.
+Evolução potencial em produção:
+- adapter de object storage/compatível com S3.
 
-## 13. Security baseline
+## 13. Segurança mínima
 
-Never put the following into logs:
-- document contents;
-- extracted document fields;
-- person's name;
-- document number;
-- sensitive/personal data.
+Nunca coloque o seguinte em logs:
+- conteúdo do documento;
+- campos extraídos do documento;
+- nome da pessoa;
+- número do documento;
+- dados sensíveis/pessoais.
 
-Also:
-- enforce upload size at the parser boundary;
-- treat uploads as untrusted input;
-- validate actual file type;
-- enforce size limit;
-- keep `.env` and secrets out of Git;
-- use only fictitious documents;
-- use internal generated storage identifiers;
-- avoid path traversal;
-- keep PostgreSQL and stored files non-public.
+Também:
+- aplicar o limite de tamanho na fronteira do parser;
+- tratar uploads como entrada não confiável;
+- validar o tipo real do arquivo;
+- aplicar o limite de tamanho;
+- manter `.env` e secrets fora do Git;
+- usar só documentos fictícios;
+- usar identificadores de storage gerados internamente;
+- evitar path traversal;
+- manter PostgreSQL e arquivos armazenados não públicos.
 
-Authentication is not fully implemented in Phase 1.
+Autenticação não está totalmente implementada na Fase 1.
 
-## 14. Phase 1 — mandatory vertical slice
+## 14. Fase 1 — vertical slice obrigatória
 
-Phase 1 must be independently deliverable.
+A Fase 1 precisa ser entregável de forma independente.
 
-Required path:
+Caminho obrigatório:
 
-upload image
--> validate
+upload de imagem
+-> validar
 -> SHA-256
--> deduplicate
--> persist document and processing job atomically
--> return 202
--> worker claims job atomically
+-> deduplicar
+-> persistir documento e job de processamento de forma atômica
+-> retornar 202
+-> worker reivindica o job de forma atômica
 -> fake provider
 -> checks
--> immutable processing run
--> persist result
--> expose result through `GET /documents/:id`
+-> processing run imutável
+-> persistir resultado
+-> expor o resultado via `GET /documents/:id`
 
-Phase 1 also requires:
-- selected automated tests;
-- build/lint/test passing;
-- PostgreSQL reproducible through Docker Compose;
-- README instructions that another person can follow.
+A Fase 1 também exige:
+- testes automatizados selecionados;
+- build/lint/test passando;
+- PostgreSQL reproduzível via Docker Compose;
+- instruções de README que outra pessoa consiga seguir.
 
-## 15. Phase 2 — planned extension
+## 15. Fase 2 — extensão planejada
 
-After Phase 1 is stable:
+Depois que a Fase 1 estiver estável:
 
-- PDF support;
-- `GET /documents` with pagination/filter;
-- minimal service-to-service API key;
+- suporte a PDF;
+- `GET /documents` com paginação/filtro;
+- API key mínima service-to-service;
 - OpenAPI/Swagger;
-- additional upload/security hardening;
-- broader tests.
+- hardening adicional de upload/segurança;
+- testes mais amplos.
 
-Stretch only if time remains:
+Stretch, só se sobrar tempo:
 - `Idempotency-Key`.
 
-Phase 2 must never destabilize Phase 1.
+A Fase 2 nunca deve desestabilizar a Fase 1.
 
-## 16. Phase 3 — remainder of product target
+## 16. Fase 3 — restante do produto-alvo
 
-Phase 3 may add:
+A Fase 3 pode adicionar:
 
-- real document classification;
-- standardized filename suggestion;
-- real multimodal provider adapter;
-- human review queue;
-- correction of extracted fields;
-- review claim/lease;
-- optimistic locking/versioning and `409 Conflict`;
-- audit trail for human corrections;
-- a second document type to prove extensibility;
-- explicit reprocessing endpoint;
-- stronger service-to-service security and operational hardening.
+- classificação real do tipo de documento;
+- sugestão de nome padronizado;
+- adapter real de provider multimodal;
+- fila de revisão humana;
+- correção de campos extraídos;
+- claim/lease de revisão;
+- optimistic locking/versionamento e `409 Conflict`;
+- trilha de auditoria das correções humanas;
+- um segundo tipo de documento para provar extensibilidade;
+- endpoint explícito de reprocessamento;
+- segurança service-to-service mais forte e hardening operacional.
 
-Phase 3 is secondary to a stable, tested, documented delivery.
+A Fase 3 é secundária a uma entrega estável, testada e documentada.
 
-## 17. Ownership and parallel work
+## 17. Ownership e revisão
 
-Claude and Codex work on different areas.
+O Claude é o agente principal de implementação para tarefas de backend
+delegadas à IA, incluindo:
 
-### Claude — primary ownership
-- project foundation;
-- NestJS wiring;
-- Prisma/Docker foundation;
-- ingestion/API;
-- uploads;
-- storage;
-- SHA-256;
-- deduplication;
-- Phase 2 API work;
-- OpenAPI;
-- API-key implementation.
+- foundation do projeto;
+- NestJS/Prisma/Docker;
+- ingestão/API;
+- uploads e storage;
+- SHA-256 e deduplicação;
+- módulo de processamento;
+- job claiming e worker;
+- state machine e retries;
+- histórico de processamento e validação de resultado;
+- trabalho de fases seguintes quando explicitamente atribuído.
 
-### Codex — primary ownership
-- processing module;
-- job claiming;
-- worker;
+O responsável pelo projeto mantém autoridade final sobre:
+- escopo;
+- arquitetura;
+- contratos compartilhados;
 - state machine;
-- retries;
-- processing history;
-- result validation;
-- review/concurrency work in Phase 3.
+- contrato da API;
+- migrations;
+- aceite de mudanças;
+- decisões de merge.
 
-### Initial Prisma schema ownership
+### Ownership do schema Prisma inicial
 
-Claude owns the first complete version of:
+O Claude é dono da primeira versão completa de:
 - `prisma/schema.prisma`;
-- the initial migration.
+- a migration inicial.
 
-That first schema must include the shared models already defined by the human
-documents:
+Esse primeiro schema precisa incluir:
 - `Document`;
 - `ProcessingJob`;
 - `ProcessingRun`;
 - `DocumentResult`;
-- shared enums required by the initial state machine.
+- enums compartilhados exigidos pela state machine inicial.
 
-Codex reviews the processing-related models before implementing its module.
+### Regra de contrato compartilhado
 
-If Codex believes the shared schema or migration must change:
-1. describe the required change;
-2. explain its impact;
-3. stop and wait for approval.
-
-Claude and Codex must not edit the shared Prisma schema/migrations in parallel.
-
-### Shared-contract rule
-
-No agent may silently change:
-- Prisma shared models;
-- shared enums;
-- API contracts;
+O Claude não pode alterar silenciosamente:
+- modelos compartilhados do Prisma;
+- enums compartilhados;
+- contratos da API;
 - state machine;
-- cross-module interfaces;
-- migration strategy;
-- shared DTO contracts.
+- interfaces entre módulos;
+- estratégia de migration;
+- contratos de DTO compartilhados.
 
-If a change is needed:
-1. describe the problem;
-2. propose alternatives;
-3. stop and wait for approval.
+Se uma mudança compartilhada for necessária:
+1. descrever o problema;
+2. propor a menor mudança compatível;
+3. parar e esperar aprovação humana.
 
-## 18. Cross-review
+Se uma correção começar a virar uma nova implementação, prefiro separar uma
+nova tarefa e devolver a implementação ao Claude em vez de transformar a
+revisão em uma segunda rodada de implementação.
 
-After implementation work is pushed:
-- Codex reviews Claude-owned changes;
-- Claude reviews Codex-owned changes.
+## 18. Revisão humana
 
-First review must be read-only.
+Mudanças relevantes de implementação são revisadas pelo responsável pelo
+projeto antes do aceite final.
 
-Each finding must contain:
-- severity;
-- file/location;
-- problem;
-- reproduction/failure scenario;
-- impact;
-- suggested correction;
-- whether it is confirmed or hypothetical.
+A revisão deve focar em:
+- alinhamento com especificação/arquitetura;
+- correção de regra de negócio;
+- concorrência e transações;
+- segurança e PII;
+- contratos de API/compartilhados;
+- testes e CI;
+- riscos restantes.
 
-Do not manufacture defects for documentation.
+Quem revisa pode pedir apoio técnico à IA, mas a decisão de aceitar/rejeitar
+é humana.
 
-## 19. Implementation order
+Não fabrique defeitos para fins de documentação.
 
-Project workflow:
 
-1. specify;
-2. implement;
-3. push branch;
-4. run/observe tests and CI;
-5. cross-review;
-6. document real failures;
-7. correct;
-8. rerun;
-9. merge only after validation.
+## 19. Ordem de implementação
 
-Testing after the initial push is intentional because real failures should be preserved as engineering evidence when they occur.
+Fluxo do projeto:
 
-Never mark something as passing if it was not executed.
+1. especificar;
+2. implementar;
+3. subir a branch;
+4. rodar/observar testes e CI;
+5. revisão humana;
+6. documentar falhas reais;
+7. corrigir;
+8. rodar de novo;
+9. merge só depois da validação.
 
-## 20. Human-owned documents
+Testar depois do push inicial é intencional, porque falhas reais devem ser
+preservadas como evidência de engenharia quando acontecem.
 
-These are owned by the project owner and must not be rewritten by an agent without explicit permission:
+Nunca marque algo como aprovado se não foi executado.
+
+## 20. Documentos de propriedade humana
+
+Estes são de propriedade do responsável pelo projeto e não podem ser reescritos por um agente sem autorização explícita:
 
 - `docs/specification.md`
 - `docs/architecture.md`
-- ADRs under `docs/decisions/`
-- closing letter
+- ADRs em `docs/decisions/`
+- carta de encerramento
 
-Agents may:
-- point out contradictions;
-- ask questions;
-- propose amendments.
+Agentes podem:
+- apontar contradições;
+- fazer perguntas;
+- propor emendas.
 
-Agents may not silently rewrite history.
+Agentes não podem reescrever a história silenciosamente.
 
-## 21. AI traceability
+## 21. Rastreabilidade de IA
 
-All agent use that materially affects the project must remain traceable.
+Todo uso de agente que afete materialmente o projeto precisa continuar rastreável.
 
-Keep:
-- agent instruction files;
-- project skills;
-- MCP configuration actually used;
-- prompts in full and chronological order;
-- task reports;
-- actual AI mistakes and how they were detected/corrected.
+Manter:
+- arquivos de instrução de agente;
+- skills do projeto;
+- configuração de MCP realmente usada;
+- prompts completos e em ordem cronológica;
+- relatórios de tarefa;
+- erros reais da IA e como foram detectados/corrigidos.
 
-Do not rewrite old prompts to make them look cleaner.
+Não reescreva prompts antigos para parecerem mais bonitos.
 
-## 22. Stop conditions
+## 22. Condições de parada
 
-Stop and ask before:
-- adding structural dependencies;
-- introducing a broker;
-- changing database technology;
-- changing the state machine;
-- changing the API contract;
-- changing shared Prisma models owned by another agent;
-- expanding beyond the assigned phase/task;
-- replacing a documented architectural decision.
+Pare e pergunte antes de:
+- adicionar dependências estruturais;
+- introduzir um broker;
+- trocar a tecnologia de banco;
+- mudar a state machine;
+- mudar o contrato da API;
+- mudar modelos Prisma compartilhados sem aprovação;
+- expandir além da fase/tarefa atribuída;
+- substituir uma decisão arquitetural documentada.

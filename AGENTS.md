@@ -1,4 +1,4 @@
-# AGENTS.md — Lamarck DOC Intelligence (Codex)
+# AGENTS.md — Lamarck DOC Intelligence
 
 Leia `PROJECT_CONTEXT.md` antes de qualquer trabalho no projeto.
 
@@ -8,110 +8,76 @@ Leia também, quando existirem:
 - ADRs relevantes em `docs/decisions/`
 - `docs/ai/AI_WORKFLOW.md`
 
-Se houver conflito com documentos humanos de especificação/arquitetura/ADR, pare e peça confirmação.
+Se houver conflito com os documentos humanos, pare e peça confirmação.
 
 ## Papel
 
-Você é o agente principal de implementação para:
-- módulo de processamento;
-- fila persistente baseada em PostgreSQL;
-- claim atômico de jobs;
-- worker;
-- state machine;
-- retry;
-- `ProcessingRun`;
-- `DocumentResult`;
-- integração com fake provider;
-- validação determinística/documental;
-- review/concurrency da Fase 3 quando atribuído.
+Este arquivo contém regras gerais de trabalho para o Claude neste projeto.
 
-Você também é o revisor adversarial das mudanças de ingestão/API feitas pelo Claude após push.
-
-Não assuma silenciosamente responsabilidades de ingestão/API/storage do Claude.
+O Claude pode ajudar em implementação, análise ou revisão, mas não decide
+sozinho mudanças de arquitetura, escopo ou contratos compartilhados.
 
 ## Regras de trabalho
 
 Antes de alterar código:
-1. declare o escopo;
-2. declare o que está fora do escopo;
-3. identifique decisões relevantes de spec/architecture/ADR;
-4. identifique contratos compartilhados que não podem mudar;
-5. pare se uma mudança compartilhada for necessária.
+1. entenda o escopo;
+2. identifique o que está fora do escopo;
+3. leia as decisões relevantes;
+4. identifique contratos compartilhados;
+5. pare se uma mudança arquitetural precisar de aprovação.
 
 Durante a implementação:
-- não amplie escopo;
+- não amplie escopo sem necessidade;
 - não reescreva documentos humanos;
-- não adicione broker;
-- não mude tecnologia de banco;
-- preserve state machine;
-- mantenha `ProcessingRun` histórico/imutável;
-- diferencie falha técnica de revisão semântica;
-- aplique máximo de 3 tentativas totais;
-- use claim atômico do job;
-- mantenha locks curtos;
-- nunca segure row lock durante trabalho externo/provider;
-- não vaze PII/conteúdo documental em logs.
+- não adicione infraestrutura sem justificativa;
+- preserve a state machine definida;
+- mantenha `ProcessingRun` histórico;
+- diferencie falha técnica de inconsistência semântica;
+- respeite o limite de três tentativas;
+- mantenha locks e transações curtos;
+- não segure lock enquanto espera provider externo;
+- não coloque PII ou conteúdo documental em logs.
 
-## Regra de contratos compartilhados
+## Contratos compartilhados
 
-Não altere diretamente sem aprovação:
+Não altere silenciosamente:
 - `prisma/schema.prisma`;
+- migrations;
 - enums compartilhados;
-- DTOs compartilhados;
+- DTOs/contratos da API;
+- interfaces entre módulos;
+- state machine.
+
+Se uma mudança for necessária:
+1. explique o motivo;
+2. proponha a menor mudança;
+3. mostre o impacto;
+4. aguarde aprovação humana.
+
+## Revisão
+
+Quando a tarefa for revisão, a primeira passada é somente leitura.
+
+Priorize:
+- divergência da especificação;
+- bug de regra de negócio;
+- segurança;
+- concorrência;
+- transações;
 - contrato da API;
-- interfaces cross-module;
-- migrations.
+- testes;
+- falhas silenciosas.
 
-Se precisar de mudança compartilhada:
-1. explique o requisito concreto;
-2. proponha a menor mudança compatível;
-3. indique impacto no trabalho do Claude;
-4. pare e aguarde aprovação.
+Não invente finding para preencher relatório.
 
-## Revisão do Claude
-
-Primeira passada é read-only.
-Priorize defeitos, não estilo.
-
-Prioridade:
-1. divergência da especificação;
-2. bug de regra de negócio;
-3. upload inseguro;
-4. race condition na deduplicação;
-5. problemas de transação/atomicidade;
-6. vazamento de PII;
-7. inconsistência de contrato de API;
-8. testes ausentes/fracos;
-9. falhas silenciosas/error handling.
-
-Cada finding:
-- Severity
-- Location
-- Problem
-- Failure scenario
-- Impact
-- Suggested correction
-- Confirmed vs hypothesis
+A decisão final de aceitar, pedir correção ou fazer merge é humana.
 
 ## Validação
 
-Rode scripts e testes relevantes do projeto.
+Rode os testes e scripts relevantes.
 Nunca reporte PASS sem executar.
-
-## Relatório obrigatório
-
-Toda tarefa material deve gerar relatório compatível com:
-
-`docs/implementation/TASK_REPORT_TEMPLATE.md`
-
-O objetivo é permitir que o responsável entenda e explique a implementação.
 
 ## Git
 
-Não faça commit sem autorização explícita.
+Não faça commit sem autorização quando a tarefa não permitir explicitamente.
 Não altere timestamps nem fabrique histórico.
-
-## Transparência
-
-Não apresente implementação gerada por IA como escrita sem IA.
-Não fabrique erros, testes, proveniência ou autoria humana.

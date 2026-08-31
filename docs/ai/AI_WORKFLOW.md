@@ -1,138 +1,81 @@
-# AI Workflow — Lamarck DOC Intelligence
+# Fluxo de Trabalho com IA — Lamarck DOC Intelligence
 
 ## Objetivo
 
-Definir como Claude e Codex colaboram sem criar decisões arquiteturais ocultas, trabalho duplicado ou uso de IA sem rastreabilidade.
+Organizar o uso de IA no projeto sem deixar decisões importantes escondidas e
+sem transformar o processo em burocracia.
 
-## Papéis
+## Uso da IA
 
-### Claude
-Implementação principal:
-- fundação;
-- ingestão/API;
-- upload/storage/dedup;
-- superfície da Fase 2.
+O Claude pode ser usado para implementação, análise técnica, testes e apoio na
+documentação.
 
-Papel secundário:
-- revisar mudanças de processamento do Codex.
+As decisões de escopo, arquitetura, contrato da API, state machine, ADRs e
+aceite final continuam sendo humanas.
 
-### Codex
-Implementação principal:
-- processamento/worker;
-- concorrência;
-- state machine/retry/history;
-- fluxo de revisão da Fase 3 quando atribuído.
+## Revisão humana
 
-Papel secundário:
-- revisar mudanças de ingestão/API do Claude.
+Mudanças relevantes passam por revisão humana antes do merge.
 
-## Autoridade humana
+Na revisão eu quero conferir principalmente:
+- se o código segue a especificação;
+- se contratos compartilhados continuam coerentes;
+- se concorrência/transações fazem sentido;
+- se não há vazamento de PII;
+- se testes e CI realmente passaram;
+- se consigo explicar o que foi feito.
 
-O responsável pelo projeto controla:
-- escopo;
-- arquitetura;
-- contrato da API;
-- state machine;
-- prioridade das fases;
-- ADRs;
-- aceite/rejeição de propostas;
-- merges.
+Se a revisão mostrar uma correção pequena, ela pode ser tratada normalmente.
 
-Documentos humanos:
-- specification;
-- architecture;
-- ADRs;
-- carta final.
+Se a correção virar praticamente uma nova implementação — como regra prática,
+mais de aproximadamente 30% da tarefa — prefiro devolver a implementação ao
+Claude e revisar a nova versão.
 
-Agentes podem criticar, mas não reescrever silenciosamente.
+## Prompts
 
-## Protocolo de prompt
+Prompts de implementação devem ser objetivos e conter apenas o necessário para:
+- explicar a tarefa;
+- definir o que entra e o que não entra;
+- apontar decisões já tomadas;
+- indicar validações;
+- dizer quando o Claude deve parar.
 
-Cada prompt de implementação deve conter:
-1. objetivo da tarefa;
-2. dentro do escopo;
-3. fora do escopo;
-4. spec/ADRs que governam;
-5. arquivos/módulos de propriedade do agente;
-6. arquivos compartilhados que não podem mudar sem aprovação;
-7. critérios de aceite;
-8. validações exigidas;
-9. relatório obrigatório;
-10. condições de parada.
+Os prompts relevantes ficam em:
 
-Salvar prompts completos, sem reescrever, e em ordem cronológica.
+`docs/ai/prompts/claude/`
 
-Estrutura sugerida:
-- `docs/ai/prompts/claude/`
-- `docs/ai/prompts/codex/`
+## Branches
 
-## Protocolo de branches
+Usar branches focadas por tarefa.
 
-Sugestão:
-- Claude: `feat/claude-<scope>`
-- Codex: `feat/codex-<scope>`
+Fluxo normal:
 
-Fluxo:
 1. implementar;
-2. commit/push de branch focada;
-3. executar CI/testes;
-4. preservar falhas reais;
-5. revisão cruzada read-only;
-6. corrigir;
-7. rodar novamente;
-8. merge após validação.
+2. revisar o diff;
+3. commit/push;
+4. executar CI/testes;
+5. revisão humana;
+6. corrigir falhas reais;
+7. validar novamente;
+8. merge.
 
 Não fabricar falhas.
 
-## Revisão cruzada
+## Problemas encontrados
 
-O revisor não edita na primeira passada.
+Quando aparecer um erro real:
+- registrar o problema;
+- explicar o impacto;
+- corrigir;
+- rodar novamente as validações relevantes.
 
-Formato:
-
-### Finding <n>
-Severity:
-Location:
-Problem:
-Failure scenario:
-Impact:
-Suggested correction:
-Status: CONFIRMED | HYPOTHESIS
-
-Priorizar correção funcional sobre estilo.
-
-## Documentação de falha
-
-Se um agente introduzir defeito real:
-- preservar o prompt original;
-- registrar teste/CI/reprodução que falhou;
-- descrever como o problema foi detectado;
-- descrever correção;
-- rodar validação novamente;
-- registrar resultado final.
-
-Arquivo sugerido:
-- `docs/ai/agent-retrospective.md`
-
-Não inventar erro apenas para preencher requisito.
-
-## Proveniência
-
-Relatórios devem distinguir:
-- implementação gerada por agente;
-- modificações humanas posteriores;
-- revisão cruzada;
-- estado final aceito.
-
-Não afirmar que código gerado por agente foi escrito sem IA.
+Não é necessário criar um arquivo separado para todo erro pequeno.
 
 ## Quality gate
 
-Uma tarefa não termina porque o código existe.
-
-Só termina quando:
-- critérios de aceite foram atendidos;
-- build/lint/testes exigidos foram executados;
-- resultados foram reportados honestamente;
-- relatório da tarefa existe;
-- riscos restantes estão explícitos.
+Uma tarefa só está pronta quando:
+- o escopo foi atendido;
+- os testes relevantes foram executados;
+- a CI foi verificada;
+- os riscos restantes estão claros;
+- a revisão humana foi concluída quando necessária.

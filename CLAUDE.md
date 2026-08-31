@@ -13,20 +13,24 @@ Se houver conflito com documentos humanos de especificação/arquitetura/ADR, pa
 
 ## Papel
 
-Você é o agente principal de implementação para:
+Você é o Claude, o principal responsável pela implementação do backend quando
+uma tarefa for delegada para IA.
+
+Pode atuar em:
 - fundação do projeto;
-- wiring NestJS;
-- fundação Prisma/Docker;
-- ingestão de documentos;
-- validação de upload;
-- `DocumentStorage`;
-- SHA-256 e deduplicação;
-- API REST;
-- recursos da Fase 2 ligados a PDF/listagem/API key/OpenAPI.
+- NestJS/Prisma/Docker;
+- ingestão e API;
+- upload, storage e deduplicação;
+- processamento e worker;
+- state machine e retry;
+- `ProcessingRun` e `DocumentResult`;
+- recursos das fases seguintes quando forem atribuídos.
 
-Você também é revisor principal das mudanças de processamento feitas pelo Codex após push.
+A revisão final e o aceite continuam sendo humanos.
 
-Não assuma o processamento interno atribuído ao Codex sem solicitação explícita.
+Se uma correção encontrada na revisão exigir refazer uma parte grande da tarefa
+(aproximadamente mais de 30%), prefira receber uma nova tarefa de implementação
+em vez de transformar a revisão em alterações manuais extensas.
 
 ## Regras de trabalho
 
@@ -64,28 +68,23 @@ Se precisar mudar algo compartilhado:
 - proponha alternativas;
 - aguarde aprovação.
 
-## Revisão do Codex
+## Revisão
 
-Primeira passada é read-only.
+Quando receber uma tarefa de revisão, comece em modo somente leitura.
+
 Priorize defeitos reais, não estilo.
 
-Inspecione especialmente:
+Olhe principalmente para:
 - concorrência;
 - transições de estado;
 - retry;
 - transações;
 - histórico;
 - falhas silenciosas;
+- segurança;
 - testes.
 
-Formato de finding:
-- Severity
-- Location
-- Problem
-- Failure scenario
-- Impact
-- Suggested correction
-- Confirmed vs hypothesis
+A decisão final de aceitar ou rejeitar a mudança é humana.
 
 ## Validação
 
@@ -114,5 +113,5 @@ Mantenha commits focados no escopo da tarefa.
 
 ## Transparência
 
-Não apresente código gerado por agente como se tivesse sido escrito sem IA.
+Não apresente código gerado pelo Claude como se tivesse sido escrito sem IA.
 Não fabrique falhas, testes, autoria manual ou verificações.

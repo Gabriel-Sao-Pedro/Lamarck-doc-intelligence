@@ -3,10 +3,10 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/client.js';
 
 /**
- * Single PrismaClient instance for the whole process, wired with the
- * PostgreSQL driver adapter required by Prisma 7 (`@prisma/adapter-pg`).
- * A plain `new PrismaClient()` does not connect in this Prisma version —
- * see docs/implementation/001-project-foundation.md for the reasoning.
+ * Instância única de PrismaClient para todo o processo, conectada com o
+ * driver adapter de PostgreSQL exigido pelo Prisma 7 (`@prisma/adapter-pg`).
+ * Um `new PrismaClient()` simples não conecta nesta versão do Prisma —
+ * ver docs/implementation/001-project-foundation.md para a explicação.
  */
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
@@ -19,7 +19,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   async onModuleInit(): Promise<void> {
     await this.$connect();
-    this.logger.log('Connected to PostgreSQL via Prisma');
+    this.logger.log('Conectado ao PostgreSQL via Prisma');
   }
 
   async onModuleDestroy(): Promise<void> {
