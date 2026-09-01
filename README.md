@@ -109,7 +109,7 @@ processamento — nenhuma delas precisa ser definida para uso normal:
 
 `API_KEY` (documentada em `.env.example`) é **obrigatória** — a aplicação
 recusa subir sem ela. É a chave exigida no header `X-API-Key` para acessar
-qualquer rota de `/documents` (ver seção seguinte).
+qualquer rota de `/documents` e `/reviews` (ver seção seguinte).
 
 ## Enviando e consultando um documento (vertical slice)
 
