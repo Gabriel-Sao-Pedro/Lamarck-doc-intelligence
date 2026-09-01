@@ -43,7 +43,7 @@ describe('OpenAPI (e2e)', () => {
   });
 
   // OPENAPI3 — rotas documentadas
-  it('OPENAPI3 — /docs-json documenta POST/GET /documents e GET /documents/{id}', () => {
+  it('OPENAPI3 — /docs-json documenta rotas públicas principais', () => {
     const paths = document.paths as Record<string, Record<string, unknown>>;
 
     expect(paths['/documents']).toBeDefined();
@@ -51,6 +51,8 @@ describe('OpenAPI (e2e)', () => {
     expect(paths['/documents'].get).toBeDefined();
     expect(paths['/documents/{id}']).toBeDefined();
     expect(paths['/documents/{id}'].get).toBeDefined();
+    expect(paths['/reviews/{documentId}']).toBeDefined();
+    expect(paths['/reviews/{documentId}'].patch).toBeDefined();
   });
 
   // OPENAPI4 — API key scheme
@@ -67,7 +69,7 @@ describe('OpenAPI (e2e)', () => {
   });
 
   // OPENAPI5 — segurança nas operações
-  it('OPENAPI5 — POST/GET /documents e GET /documents/{id} declaram o security scheme', () => {
+  it('OPENAPI5 — operações públicas declaram o security scheme', () => {
     const paths = document.paths as Record<string, Record<string, { security?: unknown[] }>>;
 
     expect(paths['/documents'].post.security).toBeDefined();
@@ -76,6 +78,8 @@ describe('OpenAPI (e2e)', () => {
     expect((paths['/documents'].get.security as unknown[]).length).toBeGreaterThan(0);
     expect(paths['/documents/{id}'].get.security).toBeDefined();
     expect((paths['/documents/{id}'].get.security as unknown[]).length).toBeGreaterThan(0);
+    expect(paths['/reviews/{documentId}'].patch.security).toBeDefined();
+    expect((paths['/reviews/{documentId}'].patch.security as unknown[]).length).toBeGreaterThan(0);
   });
 
   // OPENAPI6 — multipart
@@ -119,13 +123,12 @@ describe('OpenAPI (e2e)', () => {
       expect(raw).not.toContain(forbidden);
     }
 
-    // claimToken passou a ser público a partir da Fase 3.2, mas só como
-    // parte do contrato de POST /reviews/:id/claim (ReviewClaimResponseDto)
-    // — continua proibido em qualquer outro schema (documentos, fila de
-    // revisão), já que ali seria o claimToken interno do ProcessingJob.
+    // claimToken é público apenas nos contratos de review que precisam
+    // provar posse: resposta de claim e body de correção. Continua proibido
+    // em documentos, fila de revisão e schemas internos do processamento.
     const schemas = (document.components as { schemas?: Record<string, unknown> } | undefined)?.schemas ?? {};
     for (const [name, schema] of Object.entries(schemas)) {
-      if (name === 'ReviewClaimResponseDto') continue;
+      if (name === 'ReviewClaimResponseDto' || name === 'ReviewCorrectionBodyDto') continue;
       expect(JSON.stringify(schema)).not.toContain('claimToken');
     }
   });

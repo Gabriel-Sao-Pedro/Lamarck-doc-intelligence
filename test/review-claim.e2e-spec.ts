@@ -69,6 +69,7 @@ describe('ReviewClaim (e2e)', () => {
     expect(typeof response.body.claimToken).toBe('string');
     expect(response.body.claimToken.length).toBeGreaterThan(0);
     expect(new Date(response.body.leaseExpiresAt).getTime()).toBeGreaterThan(Date.now());
+    expect(response.body.version).toBe(1);
   });
 
   // RC2 — documento inexistente
