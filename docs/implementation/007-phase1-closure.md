@@ -172,27 +172,14 @@ Sequência real, confirmada pela leitura de cada arquivo:
 6. `06-document-query-review.md` — revisão humana da consulta e da
    vertical slice completa, **aprovada para merge**.
 
-### Divergência de autoria encontrada (finding documental)
+### Hipótese de divergência de autoria levantada e descartada
 
-Em `03-document-ingestion-review.md`, o texto atribui a correção de
-`ING-001`/`ING-002` a "eu mesmo" (o revisor humano):
-
-> "Eu mesmo corrigi esses dois pontos." (linha 14)
-> "Commits das minhas correções após a revisão: `f32f82f`, `3806285`" (linhas 26–28)
-
-Esses dois commits (`f32f82f` — fortalecimento do teste de concorrência;
-`3806285` — correção da contagem E2E no relatório) foram, na prática,
-implementados pelo Claude, a pedido explícito de uma tarefa dedicada
-("05 — Claude — Correção dos findings da ingestão") — o mesmo padrão que
-`04-document-processing-review.md`/`05-document-processing-findings-review.md`
-descrevem corretamente para o processing (`PROC-001`/`002`/`003`
-corrigidos pelo Claude, validados pela revisão humana).
-
-Não alterei `03-document-ingestion-review.md` — é um documento de revisão
-humana, e a correção de atribuição nele é uma decisão da pessoa
-responsável pelo projeto, não minha. Registro aqui como finding
-documental para que a atribuição seja corrigida por quem tem autoridade
-sobre esse arquivo.
+Durante a auditoria final, o agente levantou uma possível divergência de
+autoria na review 03 referente aos commits `f32f82f` e `3806285`. A
+hipótese foi confrontada com o registro feito no momento da execução e
+descartada. As correções `ING-001` e `ING-002` foram realizadas
+manualmente pelo revisor humano; a review 03 permanece correta e não foi
+alterada.
 
 ### Ausência de atribuição explícita (observação menor, não bloqueante)
 
@@ -256,8 +243,6 @@ Nenhum `npm audit fix`/`--force` foi executado.
   Corrigir exigiria `npm audit fix --force`, que instalaria
   `prisma@6.12.0` — uma quebra de versão maior, deliberadamente evitada
   em todas as tarefas anteriores.
-- Divergência de atribuição de autoria em `03-document-ingestion-review.md`
-  (seção 6) — não corrigida por não ser um arquivo que me cabe editar.
 - `DocumentResult` "mais recente" (regra de `docs/implementation/006-document-query.md`)
   depende de uma garantia operacional do fluxo atual (documento terminal
   nunca volta a ser elegível para claim), não de uma constraint de schema —
@@ -280,8 +265,9 @@ consulta até estado terminal). O README, que antes descrevia só a
 foundation, agora é suficiente para reproduzir essa entrega sem depender
 de código-fonte ou desta conversa. A rastreabilidade de prompts está
 indexada e a sequência de reviews humanas conta a história real da
-Fase 1, com uma divergência de atribuição documentada (não corrigida por
-não me caber alterar reviews humanas) e nenhum finding de código novo.
+Fase 1. Uma hipótese de divergência de atribuição levantada durante a
+auditoria foi confrontada com o registro da execução e descartada (seção
+6); nenhum finding de código novo foi encontrado.
 
 Esta conclusão não substitui a decisão humana final sobre a entrega da
 Fase 1.
