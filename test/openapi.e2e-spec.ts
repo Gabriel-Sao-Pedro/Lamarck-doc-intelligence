@@ -115,8 +115,18 @@ describe('OpenAPI (e2e)', () => {
   it('OPENAPI9 — o documento não expõe campos internos proibidos', () => {
     const raw = JSON.stringify(document);
 
-    for (const forbidden of ['storageKey', 'sha256', 'claimToken', 'ProcessingJob', 'ProcessingRun']) {
+    for (const forbidden of ['storageKey', 'sha256', 'ProcessingJob', 'ProcessingRun']) {
       expect(raw).not.toContain(forbidden);
+    }
+
+    // claimToken passou a ser público a partir da Fase 3.2, mas só como
+    // parte do contrato de POST /reviews/:id/claim (ReviewClaimResponseDto)
+    // — continua proibido em qualquer outro schema (documentos, fila de
+    // revisão), já que ali seria o claimToken interno do ProcessingJob.
+    const schemas = (document.components as { schemas?: Record<string, unknown> } | undefined)?.schemas ?? {};
+    for (const [name, schema] of Object.entries(schemas)) {
+      if (name === 'ReviewClaimResponseDto') continue;
+      expect(JSON.stringify(schema)).not.toContain('claimToken');
     }
   });
 

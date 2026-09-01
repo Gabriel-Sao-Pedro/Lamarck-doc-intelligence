@@ -53,6 +53,7 @@ export async function createDocumentWithStatus(
 
 /** Remove todas as linhas relacionadas a um documento criado em teste, na ordem que respeita as FKs. */
 export async function cleanupDocument(prisma: PrismaService, documentId: string): Promise<void> {
+  await prisma.reviewClaim.deleteMany({ where: { documentId } });
   await prisma.documentResult.deleteMany({ where: { documentId } });
   await prisma.processingRun.deleteMany({ where: { documentId } });
   await prisma.processingJob.deleteMany({ where: { documentId } });

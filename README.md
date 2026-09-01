@@ -268,8 +268,40 @@ histórico, então o item mais velho é o que deveria ser revisado primeiro.
 `page`/`pageSize` seguem os mesmos defaults e limites de `GET /documents`.
 Cada item inclui o `result` que levou o documento a `NEEDS_REVIEW`.
 
-Esta é só a listagem (Fase 3.1) — ainda não existe claim de revisor, lease
-ou correção de campos.
+Esta é só a listagem (Fase 3.1) — ainda não existe correção de campos.
+
+### 6. Reivindique um documento para revisão
+
+```bash
+curl -X POST -H "X-API-Key: change-me" -H "Content-Type: application/json" \
+  -d '{"reviewerId":"reviewer-01"}' \
+  http://localhost:3000/reviews/<documentId>/claim
+```
+
+Concede um claim exclusivo com lease de 15 minutos (Fase 3.2). Regras:
+
+```text
+documento inexistente        -> 404
+status != NEEDS_REVIEW       -> 409
+claim ativo por outro revisor -> 409
+sem claim ou lease expirado  -> claim concedido, novo claimToken
+duas requisições simultâneas -> só uma ganha
+```
+
+Exemplo de resposta:
+
+```json
+{
+  "documentId": "uuid",
+  "claimedBy": "reviewer-01",
+  "claimToken": "uuid",
+  "leaseExpiresAt": "2026-09-01T..."
+}
+```
+
+Sem scheduler/reaper: um lease expirado é simplesmente sobrescrito no
+próximo claim. Ainda não existe correção de campos, `PATCH`,
+`reviewVersion` ou `409` por optimistic locking — isso fica para a Fase 3.3.
 
 ## Documentação da API
 

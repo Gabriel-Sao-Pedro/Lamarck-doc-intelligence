@@ -66,6 +66,7 @@ model Document {
   processingJob ProcessingJob?
   processingRuns ProcessingRun[]
   results       DocumentResult[]
+  reviewClaim   ReviewClaim?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -172,4 +173,34 @@ model DocumentResult {
   createdAt DateTime @default(now())
 
   @@index([documentId])
+}
+
+/// Claim/lease de um revisor humano sobre um Document em NEEDS_REVIEW
+/// (Fase 3.2). Entidade separada de Document de propósito: claim é estado
+/// operacional da revisão (quem está olhando agora, até quando), não uma
+/// propriedade permanente do documento — mesma separação já usada entre
+/// Document e ProcessingJob para o claim do worker. documentId é @unique
+/// porque só um claim ativo por documento faz sentido; um novo claim
+/// sobrescreve o anterior (reviewerId/claimToken/leaseExpiresAt), nunca
+/// cria uma segunda linha.
+///
+/// claimToken segue o mesmo raciocínio de fencing do ADR-007
+/// (ProcessingJob.claimToken): cada claim bem-sucedido recebe um token
+/// novo, para que uma decisão de UI antiga (ex.: um botão de "liberar"
+/// clicado atrasado) não possa agir sobre um claim que já foi substituído.
+model ReviewClaim {
+  id String @id @default(uuid())
+
+  documentId String   @unique
+  document   Document @relation(fields: [documentId], references: [id])
+
+  reviewerId String
+  claimToken String
+
+  leaseExpiresAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([leaseExpiresAt])
 }
