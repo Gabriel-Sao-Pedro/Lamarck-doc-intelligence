@@ -4,7 +4,7 @@ import { PrismaService } from '../database/prisma.service.js';
 import { DocumentStorage } from '../storage/document-storage.js';
 import { PHASE_1_DOCUMENT_TYPE } from './documents.constants.js';
 import type { IngestDocumentResponseDto } from './dto/ingest-document-response.dto.js';
-import { detectImageSignature } from './file-signature.js';
+import { detectFileSignature } from './file-signature.js';
 
 const UNIQUE_CONSTRAINT_ERROR_CODE = 'P2002';
 
@@ -20,10 +20,10 @@ export class DocumentsService {
   async ingest(file: Express.Multer.File): Promise<IngestDocumentResponseDto> {
     const startedAt = Date.now();
 
-    const signature = detectImageSignature(file.buffer);
+    const signature = detectFileSignature(file.buffer);
     if (!signature) {
       throw new BadRequestException(
-        'O conteúdo do arquivo não corresponde a um JPEG ou PNG válido.',
+        'O conteúdo do arquivo não corresponde a um JPEG, PNG ou PDF válido.',
       );
     }
 
