@@ -1,12 +1,15 @@
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiKeyGuard } from '../auth/api-key.guard.js';
 import { API_KEY_SECURITY_SCHEME } from '../auth/api-key.constants.js';
 import { parseReviewClaimBody } from './dto/review-claim-body.dto.js';
 import { ReviewClaimResponseDto } from './dto/review-claim-response.dto.js';
+import { parseReviewCorrectionBody, ReviewCorrectionBodyDto } from './dto/review-correction-body.dto.js';
+import { ReviewCorrectionResponseDto } from './dto/review-correction-response.dto.js';
 import { parseReviewQueueQuery } from './dto/review-queue-query.dto.js';
 import { ReviewQueueResponseDto } from './dto/review-queue-response.dto.js';
 import { ReviewClaimService } from './review-claim.service.js';
+import { ReviewCorrectionService } from './review-correction.service.js';
 import { ReviewQueueService } from './review-queue.service.js';
 
 @Controller('reviews')
@@ -17,6 +20,7 @@ export class ReviewsController {
   constructor(
     private readonly reviewQueueService: ReviewQueueService,
     private readonly reviewClaimService: ReviewClaimService,
+    private readonly reviewCorrectionService: ReviewCorrectionService,
   ) {}
 
   @Get()
@@ -58,5 +62,28 @@ export class ReviewsController {
   ): Promise<ReviewClaimResponseDto> {
     const body = parseReviewClaimBody(rawBody);
     return this.reviewClaimService.claim(documentId, body.reviewerId);
+  }
+
+  @Patch(':documentId')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Salva correções revisadas dos campos extraídos',
+    description:
+      'Aplica uma correção versionada usando claimToken e optimistic locking. ' +
+      'O resultado original da IA é preservado; a resposta mostra o resultado efetivo após a correção.',
+  })
+  @ApiParam({ name: 'documentId', format: 'uuid' })
+  @ApiBody({ type: ReviewCorrectionBodyDto })
+  @ApiResponse({ status: 200, description: 'Correção aceita.', type: ReviewCorrectionResponseDto })
+  @ApiResponse({ status: 400, description: 'Body inválido, version inválida ou campo de correção não permitido.' })
+  @ApiResponse({ status: 401, description: 'X-API-Key ausente ou inválida.' })
+  @ApiResponse({ status: 404, description: 'Documento não encontrado.' })
+  @ApiResponse({ status: 409, description: 'Status incompatível, claim inválido/expirado ou conflito de versão.' })
+  async correct(
+    @Param('documentId', new ParseUUIDPipe({ version: '4' })) documentId: string,
+    @Body() rawBody: unknown,
+  ): Promise<ReviewCorrectionResponseDto> {
+    const body = parseReviewCorrectionBody(rawBody);
+    return this.reviewCorrectionService.correct(documentId, body);
   }
 }

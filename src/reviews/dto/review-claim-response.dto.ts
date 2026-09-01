@@ -12,4 +12,7 @@ export class ReviewClaimResponseDto {
 
   @ApiProperty({ type: String, format: 'date-time' })
   leaseExpiresAt!: Date;
+
+  @ApiProperty({ example: 1, description: 'Versão atual da revisão, usada no PATCH com optimistic locking.' })
+  version!: number;
 }

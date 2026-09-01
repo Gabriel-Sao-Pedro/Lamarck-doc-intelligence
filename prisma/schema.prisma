@@ -57,6 +57,12 @@ model Document {
 
   status DocumentStatus @default(RECEIVED)
 
+  /// Versão operacional da revisão humana. Começa em 1 e só é
+  /// incrementada por uma correção aceita com optimistic locking
+  /// (architecture.md §19). Não altera nem substitui o resultado original
+  /// produzido pela IA em DocumentResult.
+  reviewVersion Int @default(1)
+
   /// Metadados do upload. originalFilename é só informativo — nunca deve
   /// ser usado como path no filesystem (ADR-003 / specification.md §20).
   originalFilename String
@@ -67,6 +73,7 @@ model Document {
   processingRuns ProcessingRun[]
   results       DocumentResult[]
   reviewClaim   ReviewClaim?
+  reviewCorrections ReviewCorrection[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -203,4 +210,27 @@ model ReviewClaim {
   updatedAt DateTime @updatedAt
 
   @@index([leaseExpiresAt])
+}
+
+/// Correção revisada dos campos extraídos. Cada linha representa uma versão
+/// aceita da correção e preserva o resultado original da IA em DocumentResult.
+/// correctedFields guarda apenas os campos corrigidos/enviados pelo revisor;
+/// o resultado efetivo é calculado pela aplicação combinando o resultado da
+/// IA com a sequência de correções aceitas.
+model ReviewCorrection {
+  id String @id @default(uuid())
+
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id])
+
+  version Int
+  correctedFields Json
+  reviewedBy String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([documentId, version])
+  @@index([documentId])
+  @@index([reviewedBy])
 }

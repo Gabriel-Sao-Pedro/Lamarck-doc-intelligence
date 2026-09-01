@@ -11,6 +11,7 @@ type TransactionClient = Prisma.TransactionClient;
 interface DocumentRow {
   id: string;
   status: DocumentStatus;
+  reviewVersion: number;
 }
 
 /**
@@ -30,7 +31,7 @@ export class ReviewClaimService {
   async claim(documentId: string, reviewerId: string): Promise<ReviewClaimResponseDto> {
     return this.prisma.$transaction(async (tx) => {
       const rows = await tx.$queryRaw<DocumentRow[]>`
-        SELECT "id", "status" FROM "Document" WHERE "id" = ${documentId} FOR UPDATE
+        SELECT "id", "status", "reviewVersion" FROM "Document" WHERE "id" = ${documentId} FOR UPDATE
       `;
       if (rows.length === 0) {
         throw new NotFoundException('Documento não encontrado.');
@@ -47,7 +48,7 @@ export class ReviewClaimService {
         throw new ConflictException('Documento já está reivindicado por outro revisor.');
       }
 
-      return this.acquireClaim(tx, documentId, reviewerId, now);
+      return this.acquireClaim(tx, documentId, reviewerId, document.reviewVersion, now);
     });
   }
 
@@ -55,6 +56,7 @@ export class ReviewClaimService {
     tx: TransactionClient,
     documentId: string,
     reviewerId: string,
+    version: number,
     now: Date,
   ): Promise<ReviewClaimResponseDto> {
     const claimToken = randomUUID();
@@ -71,6 +73,7 @@ export class ReviewClaimService {
       claimedBy: claim.reviewerId,
       claimToken: claim.claimToken,
       leaseExpiresAt: claim.leaseExpiresAt,
+      version,
     };
   }
 }
