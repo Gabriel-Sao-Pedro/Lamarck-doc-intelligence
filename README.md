@@ -256,6 +256,17 @@ Ordenação por `createdAt` decrescente (mais recente primeiro). A resposta
 não inclui campos extraídos nem detalhes de infraestrutura — só o resumo
 de cada documento.
 
+## Documentação da API
+
+Com a aplicação rodando, o contrato HTTP fica disponível em:
+
+- [`http://localhost:3000/docs`](http://localhost:3000/docs) — Swagger UI;
+- [`http://localhost:3000/docs-json`](http://localhost:3000/docs-json) — documento OpenAPI em JSON.
+
+As três rotas de `/documents` exigem `X-API-Key` — o botão **Authorize** no
+Swagger UI pede a chave uma vez e a reaplica em cada chamada de teste feita
+pela própria UI.
+
 ## Scripts
 
 | Comando | O que faz |
