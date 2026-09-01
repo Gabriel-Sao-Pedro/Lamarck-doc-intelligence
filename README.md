@@ -4,7 +4,7 @@ Backend do desafio Lamarck DOC Intelligence: receber documentos, processá-los
 de forma assíncrona por um worker e expor o resultado extraído por uma API
 REST.
 
-**Status: Fase 2 em andamento.**
+**Status: Fase 3 concluída (3.1, 3.2 e 3.3).**
 
 A vertical slice principal está funcional. A API já suporta:
 
@@ -13,15 +13,22 @@ A vertical slice principal está funcional. A API já suporta:
 - consulta individual;
 - listagem paginada com filtro por status;
 - suporte a JPEG, PNG e PDF;
-- autenticação simples por API key.
+- autenticação simples por API key;
+- fila de revisão humana, claim exclusivo com lease e correção de campos com optimistic locking.
 
 ```
 receber (POST /documents) → processar (worker + provider fake) → persistir → consultar (GET /documents/:id)
 ```
 
+Quando o processamento manda um documento para `NEEDS_REVIEW`, o fluxo de revisão humana continua assim:
+
+```
+GET /reviews → POST /reviews/:documentId/claim → PATCH /reviews/:documentId
+```
+
 Ver [`docs/specification.md`](docs/specification.md) e
 [`docs/architecture.md`](docs/architecture.md) para o plano completo, e
-["Limitações da Fase 1"](#limitações-da-fase-1) abaixo para o que ainda não
+["Limitações desta entrega"](#limitações-desta-entrega) abaixo para o que ainda não
 existe.
 
 ## Stack
@@ -268,7 +275,8 @@ histórico, então o item mais velho é o que deveria ser revisado primeiro.
 `page`/`pageSize` seguem os mesmos defaults e limites de `GET /documents`.
 Cada item inclui o `result` que levou o documento a `NEEDS_REVIEW`.
 
-Esta é só a listagem (Fase 3.1) — ainda não existe correção de campos.
+Esta rota (Fase 3.1) é só a listagem — nenhuma escrita acontece aqui.
+Reivindicar (passo 6) e corrigir (passo 7) vêm a seguir.
 
 ### 6. Reivindique um documento para revisão
 
@@ -300,8 +308,58 @@ Exemplo de resposta:
 ```
 
 Sem scheduler/reaper: um lease expirado é simplesmente sobrescrito no
-próximo claim. Ainda não existe correção de campos, `PATCH`,
-`reviewVersion` ou `409` por optimistic locking — isso fica para a Fase 3.3.
+próximo claim. `version` na resposta do claim é a `reviewVersion` atual do
+documento — usada no passo seguinte para o optimistic locking do `PATCH`.
+
+### 7. Corrija um campo (Fase 3.3)
+
+```bash
+curl -X PATCH -H "X-API-Key: change-me" -H "Content-Type: application/json" \
+  -d '{"claimToken":"<claimToken do claim acima>","version":1,"corrections":{"documentNumber":"..."}}' \
+  http://localhost:3000/reviews/<documentId>
+```
+
+Salva uma correção versionada dos campos extraídos, sem sobrescrever o
+resultado original da IA. Exige um claim ativo e válido:
+
+```text
+documento inexistente                    -> 404
+status != NEEDS_REVIEW                   -> 409
+claimToken incorreto, ausente ou lease
+  expirado                               -> 409
+version diferente da reviewVersion atual -> 409
+corrections com campo fora da allow-list -> 400
+```
+
+`corrections` só aceita os 5 campos de negócio de `IDENTITY_DOCUMENT`
+(`fullName`, `parentage`, `birthDate`, `documentNumber`,
+`issuingAuthority`) — qualquer outra chave é rejeitada com `400`.
+`reviewedBy` nunca vem do corpo da requisição: é sempre derivado do
+`ReviewClaim` que validou o `claimToken`.
+
+Exemplo de resposta (`200`):
+
+```json
+{
+  "documentId": "uuid",
+  "version": 2,
+  "reviewedBy": "reviewer-01",
+  "correctedFields": { "documentNumber": "..." },
+  "aiResult": { "...": "resultado original da IA, nunca sobrescrito" },
+  "effectiveResult": { "...": "resultado original + todas as correções aceitas até agora" },
+  "updatedAt": "2026-09-01T..."
+}
+```
+
+- `aiResult` — o que o provider produziu originalmente (`DocumentResult`, imutável).
+- `correctedFields` — só os campos enviados nesta correção.
+- `effectiveResult` — `aiResult` com todas as correções aceitas até agora aplicadas por cima, campo a campo; nunca persistido como uma cópia própria, sempre recalculado a partir do histórico de `ReviewCorrection`.
+- `reviewVersion`/`version` — versão operacional de optimistic locking: cada correção aceita incrementa em 1; enviar uma `version` desatualizada retorna `409` sem sobrescrever a correção já aceita.
+
+Cada correção aceita cria uma nova linha em `ReviewCorrection` (histórico
+append-only, nunca sobrescreve uma correção anterior). Continua fora de
+escopo: nome de arquivo padronizado, provider multimodal real, segundo
+tipo documental, endpoint explícito de reprocessamento.
 
 ## Documentação da API
 
@@ -348,26 +406,61 @@ automaticamente durante essa suíte (`PROCESSING_WORKER_ENABLED=false`, ver
 forma determinística. O mesmo arquivo define uma `API_KEY` fictícia
 (`test-api-key`) para a suíte não depender de nenhum segredo externo.
 
-## Limitações da Fase 1
+### O que eu escolhi testar e por quê
 
-Deliberadamente fora desta entrega (ver `docs/specification.md` §21–§25 e
-`PROJECT_CONTEXT.md`):
+A suíte (15 unitários + 109 E2E) não persegue cobertura percentual — ela
+prioriza os pontos onde um bug seria caro e fácil de não perceber em teste
+manual: **concorrência**, **consistência de estado** e **segurança do
+fluxo**. Por isso, cada área abaixo tem pelo menos um teste que força o
+cenário de disputa real, não só o caminho feliz:
+
+- **ingestão e deduplicação** — inclui uma corrida real de dois uploads
+  simultâneos com os mesmos bytes (`Promise.all`), confirmando um único
+  `Document`, um único `ProcessingJob` e que o arquivo do perdedor não fica
+  órfão no storage;
+- **processing (retry/fencing)** — lease expirado, esgotamento das 3
+  tentativas, e principalmente um worker "atrasado" tentando finalizar com
+  um `claimToken` que já foi substituído (fencing) — o cenário que mais
+  provavelmente corromperia um resultado silenciosamente;
+- **listagem e API key** — paginação sem itens repetidos/perdidos entre
+  páginas, e as quatro combinações de header ausente/vazio/errado/correto;
+- **OpenAPI** — não só que a rota aparece no `/docs-json`, mas que campos
+  internos (`storageKey`, `sha256`, `claimToken` de processamento) nunca
+  vazam para nenhum schema público;
+- **review queue, claim concorrente e optimistic locking** — o mesmo
+  raciocínio de concorrência real aplicado às Fases 3.1-3.3: duas
+  requisições de claim disputando o mesmo documento, e duas correções
+  (`PATCH`) disputando a mesma `version`, verificando não só os códigos
+  HTTP mas o estado final persistido no banco;
+- **preservação do resultado original** — depois de uma correção humana
+  aceita, o `DocumentResult` da IA é comparado byte-a-byte com o valor
+  anterior à correção.
+
+## Limitações desta entrega
+
+Deliberadamente fora do que foi construído até a Fase 3.3 (ver
+`docs/specification.md` §21–§25/§24 e `PROJECT_CONTEXT.md`):
 
 - `JPEG`/`JPG`/`PNG`/`PDF`, limite de 10 MB por arquivo;
 - extração feita por um **provider fake determinístico** — nenhum modelo de
-  IA real está integrado nesta fase, incluindo para PDF (sem OCR/parser real,
-  ver `docs/implementation/009-phase2-pdf-support.md`);
+  IA multimodal real está integrado, incluindo para PDF (sem OCR/parser
+  real, ver `docs/implementation/009-phase2-pdf-support.md`);
 - autenticação é uma única API key compartilhada por header (`X-API-Key`),
   pensada para comunicação service-to-service — sem login, sessão, JWT,
   OAuth ou usuários individuais;
-- sem fila de revisão humana operacional (o resultado de `NEEDS_REVIEW` é
-  preservado no banco, mas não há endpoint/fluxo de correção humana ainda);
-- sem sugestão de nome padronizado de arquivo (planejado para uma fase
-  futura, `docs/specification.md` §24);
+- sem nome de arquivo padronizado (planejado para uma fase futura,
+  `docs/specification.md` §24);
+- sem segundo tipo documental (só `IDENTITY_DOCUMENT` existe hoje);
+- sem endpoint explícito de reprocessamento;
+- sem endpoint para consultar o histórico completo de `ReviewCorrection` de
+  um documento — cada `PATCH` só retorna o resultado efetivo mais recente;
+- sem reaper de lease: um `ReviewClaim`/`ProcessingJob` com lease expirado
+  só é liberado quando alguém tenta reivindicar de novo, nunca
+  proativamente;
 - storage do arquivo é local em disco (`STORAGE_LOCAL_DIR`), não um serviço
   como S3;
-- PostgreSQL funciona como fila de processamento nesta fase (ADR-002), não
-  há Redis/RabbitMQ/Kafka;
+- PostgreSQL funciona como fila de processamento (ADR-002), não há
+  Redis/RabbitMQ/Kafka;
 - esta não é a arquitetura final de produção — decisões como storage local e
   fila no PostgreSQL foram escolhidas para reduzir infraestrutura nesta
   entrega (ver ADRs em `docs/decisions/`).
@@ -380,11 +473,12 @@ src/
 ├── documents/    # ingestão (POST /documents) e consulta (GET /documents/:id)
 ├── storage/      # abstração DocumentStorage + implementação local
 ├── processing/   # worker, claim/lease/fencing, provider fake, validação, finalização
+├── reviews/      # fila (GET /reviews), claim (POST .../claim), correção (PATCH /reviews/:id)
 ├── generated/prisma/   # saída do Prisma client (gerada, não commitada)
 ├── app.module.ts
 └── main.ts
 prisma/
-├── schema.prisma       # Document, ProcessingJob, ProcessingRun, DocumentResult
+├── schema.prisma       # Document, ProcessingJob, ProcessingRun, DocumentResult, ReviewClaim, ReviewCorrection
 └── migrations/
 test/
 ├── *.e2e-spec.ts        # testes end-to-end (Postgres real)

@@ -868,14 +868,44 @@ Isso significa que adicionar PDF não criou:
 A API key simples e OpenAPI continuam sendo incrementos de superfície de API,
 não mudanças na arquitetura central.
 
+### Fase 3
+
+A revisão humana prevista em §19 foi implementada em três incrementos,
+todos reaproveitando a arquitetura já existente (nenhuma fila nova, nenhum
+worker novo, nenhuma mudança na state machine de `Document`):
+
+**Fase 3.1 — fila (`GET /reviews`).** Somente leitura: filtra
+exclusivamente `NEEDS_REVIEW`, com paginação e ordenação `createdAt ASC,
+id ASC` (FIFO real, com desempate determinístico por `id` quando dois
+documentos têm `createdAt` idêntico).
+
+**Fase 3.2 — claim (`POST /reviews/:documentId/claim`).** Confirmou o
+padrão de §19 ("como duas pessoas podem abrir essa fila ao mesmo tempo,
+pretendo controlar quem está revisando cada item"): entidade própria
+`ReviewClaim`, claim exclusivo com lease de 15 minutos, `claimToken` novo a
+cada claim bem-sucedido (mesmo raciocínio de fencing do `claimToken` de
+`ProcessingJob`, ADR-007, mas para uma posse diferente). Concorrência
+resolvida com `SELECT Document FOR UPDATE` — o lock é pego em `Document`,
+não em `ReviewClaim`, porque a primeira disputa por um documento pode
+ainda não ter nenhuma linha de `ReviewClaim` para travar.
+
+**Fase 3.3 — correção (`PATCH /reviews/:documentId`).** Confirmou o resto
+de §19 ("o resultado original não deve simplesmente desaparecer" +
+versionamento com conflito em vez de sobrescrita silenciosa):
+`Document.reviewVersion` como versão operacional de optimistic locking
+(começa em 1, incrementada só por uma correção aceita), `ReviewCorrection`
+como histórico append-only (nunca sobrescreve uma correção anterior),
+`DocumentResult` original nunca é escrito por este fluxo — só lido. O
+resultado efetivo (`effectiveResult`) é sempre recalculado a partir do
+resultado da IA + histórico de correções, nunca persistido como uma cópia
+própria. A state machine de `Document` não mudou: depois de uma correção
+aceita, o documento continua em `NEEDS_REVIEW`.
+
 ### O que continua para uma fase posterior
 
 Continuam planejados para depois:
 
 - provider multimodal real;
-- revisão humana operacional;
-- claim/concorrência entre revisores;
-- correção de campos;
 - nome padronizado;
 - segundo tipo documental;
 - reprocessamento explícito.

@@ -1,4 +1,4 @@
-# Histórico de prompts — Fases 1 e 2
+# Histórico de prompts — Fases 1, 2 e 3
 
 Índice de rastreabilidade dos prompts em `docs/ai/prompts/claude/`. Cada
 linha aponta para o arquivo bruto (evidência); este índice só interpreta —
@@ -8,7 +8,13 @@ Convenção: **USADO** significa que o prompt foi de fato enviado ao Claude
 para instruir uma tarefa de implementação/correção. **VERSIONADO MAS NÃO
 USADO** significa que o arquivo existe no repositório (por rastreabilidade
 ou por ter sido salvo automaticamente durante a sessão), mas não foi a
-instrução operativa de nenhuma tarefa.
+instrução operativa de nenhuma tarefa. **INCERTO** significa que o arquivo
+existe e é coerente com o que foi entregue, mas não há evidência direta
+(transcript, commit correspondente ou registro cruzado) suficiente para
+classificá-lo com segurança como um dos dois status acima — usado só para
+os itens 13-16, encontrados pela auditoria técnica end-to-end registrada em
+`docs/implementation/reviews/` e cuja procedência exata não pôde ser
+confirmada com a mesma certeza que os itens 01-12.
 
 | # | Arquivo | Status | Finalidade | Observação |
 |---|---|---|---|---|
@@ -28,6 +34,10 @@ instrução operativa de nenhuma tarefa.
 | 10 | [`10-claude-phase2-api-key-prompt.md`](prompts/claude/10-claude-phase2-api-key-prompt.md) | USADO | Autenticação simples por API key (`X-API-Key`) nas rotas de `/documents` | Revisado em `docs/implementation/reviews/10-phase2-api-key-review.md` — aprovado; hipótese `AUTH-001` (ordem de carregamento do `.env` no bootstrap) investigada com smoke test real em processo novo e descartada |
 | 11 | [`11-claude-phase2-openapi-prompt.md`](prompts/claude/11-claude-phase2-openapi-prompt.md) | USADO | Documentação Swagger/OpenAPI do contrato HTTP já existente (`/docs`, `/docs-json`) | Revisado em `docs/implementation/reviews/11-phase2-openapi-review.md` — aprovado |
 | 12 | [`12-claude-phase2-closure-prompt.md`](prompts/claude/12-claude-phase2-closure-prompt.md) | USADO | Fechamento formal da Fase 2: fresh clone, smoke real de API key/imagem/PDF/listagem/consulta/Swagger, fechamento desta própria tabela e do `ADR-007` | Relatório em `docs/implementation/012-phase2-closure.md` |
+| 13 | [`13-claude-phase3-review-queue-prompt.md`](prompts/claude/13-claude-phase3-review-queue-prompt.md) | USADO | Roteiro de revisão técnica adversarial somente leitura da Fase 3.1 (`GET /reviews`), incluindo confirmação de `RQ-001`/`RQ-002` | Revisado em `docs/implementation/reviews/13-phase3-review-queue-review.md` |
+| 14 | [`14-claude-phase3-review-claim-review-prompt.md`](prompts/claude/14-claude-phase3-review-claim-review-prompt.md) | USADO | Roteiro de revisão técnica adversarial somente leitura da Fase 3.2 (`POST /reviews/:documentId/claim`) — concorrência, lease, fencing, migration | Revisado em `docs/implementation/reviews/14-phase3-review-claim-review.md` |
+| 15 | [`15-claude-phase3-human-correction-guidance-prompt.md`](prompts/claude/15-claude-phase3-human-correction-guidance-prompt.md) | INCERTO | Pedido de orientação de design (não de implementação) para a Fase 3.3, antes de o código existir — persistência, optimistic locking, validação de claim, contrato do `PATCH` | O conteúdo é coerente com o desenho efetivamente implementado na Fase 3.3, mas a auditoria técnica end-to-end não encontrou evidência direta (transcript, commit ou registro cruzado) de que este arquivo específico foi a instrução operativa que produziu essa implementação — ver `docs/implementation/reviews/15-phase3-review-correction-review.md` |
+| 16 | [`16-claude-phase3-review-correction-review-prompt.md`](prompts/claude/16-claude-phase3-review-correction-review-prompt.md) | USADO | Roteiro de revisão técnica adversarial somente leitura da Fase 3.3 (`PATCH /reviews/:documentId`) e instrução para produzir o relatório de implementação e a review correspondentes | Revisado em `docs/implementation/reviews/15-phase3-review-correction-review.md` (numeração final do arquivo de review fechada em `15`, não `16` como o próprio prompt nomeava, para não deixar lacuna na sequência de `docs/implementation/reviews/`) |
 
 ## O que não entra nesta pasta
 

@@ -166,8 +166,11 @@ Preferi concluir esta slice inteira, testada e validada, antes de avançar.
 
 ## 18. Autoria e uso de IA
 
-A implementação desta Fase 3.1 foi feita por mim.
+A Fase 3.1 contou com participação do Claude durante implementação e revisão,
+registrada pelos trailers `Co-Authored-By` dos commits correspondentes.
 
-Isso inclui o código em `src/reviews/`, a alteração em `src/app.module.ts`, os testes E2E, os ajustes no README e as correções de RQ-001 e RQ-002.
+Eu apliquei manualmente as correções de RQ-001 e RQ-002 e validei o resultado.
+Os trailers foram preservados porque registram a colaboração do agente na fase
+e não foram reescritos para tentar atribuir autoria linha a linha.
 
-Usei IA como apoio para orientação e revisão técnica. A implementação e as correções desta etapa são de autoria humana.
+A decisão de fechamento e merge foi minha.
