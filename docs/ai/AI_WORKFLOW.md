@@ -71,6 +71,23 @@ Quando aparecer um erro real:
 
 Não é necessário criar um arquivo separado para todo erro pequeno.
 
+### Exemplo registrado: erro do próprio Claude ao citar evidência de Git
+
+Na auditoria técnica end-to-end da Fase 3, o Claude afirmou que nove commits
+específicos da Fase 3 carregavam o trailer `Co-Authored-By: Claude` no
+relatório de auditoria. Três desses nove (`396902a`, `f86a9dd`, `3183914`)
+na verdade não têm nenhum trailer — o Claude generalizou incorretamente a
+partir dos cinco commits da Fase 3.1 que de fato carregam o trailer.
+
+Eu percebi a inconsistência ao pedir confirmação direta ("alguém consegue
+confirmar o DOC-003 pelo GitHub?"), o que levou o Claude a reconferir cada
+um dos nove commits individualmente com `git log --format`. O Claude
+corrigiu a afirmação no mesmo turno, discriminando exatamente quais dos
+nove commits carregam o trailer e quais não, e deixou explícito que a
+autoria da Fase 3.2/3.3 não é verificável só pelo histórico público do
+GitHub — só pelo conteúdo desta conversa. Nenhum commit foi alterado; só a
+citação textual da evidência foi corrigida.
+
 ## Quality gate
 
 Uma tarefa só está pronta quando:

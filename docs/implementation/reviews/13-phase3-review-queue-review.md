@@ -73,16 +73,14 @@ Foram mantidos:
 
 ### Autoria
 
-A implementação da Fase 3.1 é de autoria humana.
+A Fase 3.1 contou com participação do Claude durante implementação e revisão,
+registrada pelos trailers `Co-Authored-By` dos commits correspondentes.
 
-Isso inclui:
+Eu apliquei manualmente as correções de RQ-001 e RQ-002 e validei o resultado.
+Os trailers foram preservados porque registram a colaboração do agente na fase
+e não foram reescritos para tentar atribuir autoria linha a linha.
 
-- código;
-- testes;
-- correções de RQ-001 e RQ-002;
-- decisões da slice.
-
-O Claude atuou apenas como apoio de orientação e revisão. Não deve ser tratado como autor da implementação.
+A decisão de fechamento e merge foi minha.
 
 ## 6. Riscos não bloqueantes
 
