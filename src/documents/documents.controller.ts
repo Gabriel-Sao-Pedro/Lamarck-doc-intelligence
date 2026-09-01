@@ -10,9 +10,11 @@ import {
   Query,
   UploadedFile,
   UseFilters,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiKeyGuard } from '../auth/api-key.guard.js';
 import { DocumentListService } from './document-list.service.js';
 import { DocumentQueryService } from './document-query.service.js';
 import { MAX_UPLOAD_SIZE_BYTES } from './documents.constants.js';
@@ -24,6 +26,7 @@ import type { IngestDocumentResponseDto } from './dto/ingest-document-response.d
 import { MulterExceptionsFilter } from './multer-exceptions.filter.js';
 
 @Controller('documents')
+@UseGuards(ApiKeyGuard)
 export class DocumentsController {
   constructor(
     private readonly documentsService: DocumentsService,
