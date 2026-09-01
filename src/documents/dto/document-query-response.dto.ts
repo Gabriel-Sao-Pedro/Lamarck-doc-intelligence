@@ -1,17 +1,32 @@
-import type { DocumentStatus } from '../../generated/prisma/enums.js';
+import { ApiProperty } from '@nestjs/swagger';
+import { DocumentStatus } from '../../generated/prisma/enums.js';
 
-export interface DocumentResultFieldsDto {
-  fullName: string;
-  parentage: string;
-  birthDate: string;
-  documentNumber: string;
-  issuingAuthority: string;
+export class DocumentResultFieldsDto {
+  @ApiProperty()
+  fullName!: string;
+
+  @ApiProperty()
+  parentage!: string;
+
+  @ApiProperty({ example: '1990-01-01' })
+  birthDate!: string;
+
+  @ApiProperty()
+  documentNumber!: string;
+
+  @ApiProperty()
+  issuingAuthority!: string;
 }
 
-export interface DocumentResultResponseDto {
-  documentType: string;
-  fields: DocumentResultFieldsDto;
-  confidence: number;
+export class DocumentResultResponseDto {
+  @ApiProperty({ description: 'Tipo documental de negócio do resultado extraído.' })
+  documentType!: string;
+
+  @ApiProperty({ type: DocumentResultFieldsDto })
+  fields!: DocumentResultFieldsDto;
+
+  @ApiProperty({ example: 0.95 })
+  confidence!: number;
 }
 
 /**
@@ -20,10 +35,25 @@ export interface DocumentResultResponseDto {
  * sabe nada de storage, claim, lease ou qualquer detalhe de infraestrutura.
  */
 export class DocumentQueryResponseDto {
+  @ApiProperty({ format: 'uuid' })
   documentId!: string;
+
+  @ApiProperty({ description: 'Tipo documental de negócio (ex.: IDENTITY_DOCUMENT), independente do formato do arquivo.' })
   documentType!: string;
+
+  @ApiProperty({ enum: DocumentStatus })
   status!: DocumentStatus;
+
+  @ApiProperty({ type: String, format: 'date-time' })
   createdAt!: Date;
+
+  @ApiProperty({ type: String, format: 'date-time' })
   updatedAt!: Date;
+
+  @ApiProperty({
+    type: DocumentResultResponseDto,
+    nullable: true,
+    description: 'null enquanto o documento ainda não chegou a um estado com resultado (RECEIVED/PROCESSING/RETRYING/FAILED).',
+  })
   result!: DocumentResultResponseDto | null;
 }
