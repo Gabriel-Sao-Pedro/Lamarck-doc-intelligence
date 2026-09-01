@@ -11,8 +11,29 @@ export const MAX_ATTEMPTS = 3;
  */
 export const LEASE_DURATION_MS = 60_000;
 
+const DEFAULT_WORKER_POLL_INTERVAL_MS = 1000;
+const POSITIVE_INTEGER_PATTERN = /^\d+$/;
+
+/**
+ * Aceita só inteiro positivo (em ms); qualquer outra coisa (ausente, vazio,
+ * "0", negativo, decimal, texto, Infinity) cai no fallback seguro — nunca
+ * permite um polling agressivo/imediato por configuração inválida
+ * (PROC-003, docs/implementation/reviews/04-document-processing-review.md).
+ */
+export function parsePositiveIntervalMs(rawValue: string | undefined, fallbackMs: number): number {
+  if (rawValue === undefined) return fallbackMs;
+  const trimmed = rawValue.trim();
+  if (!POSITIVE_INTEGER_PATTERN.test(trimmed)) return fallbackMs;
+  const parsed = Number(trimmed);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) return fallbackMs;
+  return parsed;
+}
+
 /** Intervalo de polling do worker; configurável para não travar testes. */
-export const WORKER_POLL_INTERVAL_MS = Number(process.env.PROCESSING_WORKER_POLL_INTERVAL_MS ?? 1000);
+export const WORKER_POLL_INTERVAL_MS = parsePositiveIntervalMs(
+  process.env.PROCESSING_WORKER_POLL_INTERVAL_MS,
+  DEFAULT_WORKER_POLL_INTERVAL_MS,
+);
 
 /** Desliga o auto-start do loop do worker (usado em testes, ver docs/ai/prompts/claude/04-claude-document-processing-prompt.md §19). */
 export const WORKER_ENABLED = process.env.PROCESSING_WORKER_ENABLED !== 'false';

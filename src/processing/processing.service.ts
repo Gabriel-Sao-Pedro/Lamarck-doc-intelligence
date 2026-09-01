@@ -46,7 +46,6 @@ export class ProcessingService {
 
     const finalizeResult = await this.finalizationService.finalize({
       jobId: claimed.jobId,
-      documentId: claimed.documentId,
       processingRunId: claimed.processingRunId,
       claimToken: claimed.claimToken,
       outcome,
