@@ -42,13 +42,21 @@ existe.
 
 ## Pré-requisitos
 
+- Git
 - Node.js `24.x` (ver `.nvmrc`)
 - npm
 - Docker + Docker Compose (para o PostgreSQL)
 
 ## Configuração
 
-1. Copie o arquivo de ambiente e ajuste se necessário:
+1. Clone o repositório e entre na pasta:
+
+   ```bash
+   git clone https://github.com/Gabriel-Sao-Pedro/Lamarck-doc-intelligence.git
+   cd Lamarck-doc-intelligence
+   ```
+
+2. Copie o arquivo de ambiente e ajuste se necessário:
 
    ```bash
    cp .env.example .env
@@ -58,25 +66,25 @@ existe.
    `POSTGRES_PORT` (e a porta no `DATABASE_URL`) em `.env` para uma porta
    livre, ex.: `5433`.
 
-2. Suba o PostgreSQL:
+3. Suba o PostgreSQL:
 
    ```bash
    docker compose up -d
    ```
 
-3. Instale as dependências exatamente como travadas no lockfile:
+4. Instale as dependências exatamente como travadas no lockfile:
 
    ```bash
    npm ci
    ```
 
-4. Gere o Prisma client:
+5. Gere o Prisma client:
 
    ```bash
    npm run prisma:generate
    ```
 
-5. Aplique as migrations:
+6. Aplique as migrations:
 
    ```bash
    npm run prisma:migrate:deploy
@@ -86,7 +94,7 @@ existe.
    `prisma/schema.prisma` e quiser que uma nova migration seja criada
    automaticamente.)
 
-6. Inicie a aplicação:
+7. Inicie a aplicação:
 
    ```bash
    npm run start:dev
