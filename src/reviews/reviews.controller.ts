@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiKeyGuard } from '../auth/api-key.guard.js';
 import { API_KEY_SECURITY_SCHEME } from '../auth/api-key.constants.js';
@@ -53,7 +53,7 @@ export class ReviewsController {
   @ApiResponse({ status: 404, description: 'Documento não encontrado.' })
   @ApiResponse({ status: 409, description: 'Documento não está em NEEDS_REVIEW, ou já está reivindicado.' })
   async claim(
-    @Param('documentId') documentId: string,
+    @Param('documentId', new ParseUUIDPipe({ version: '4' })) documentId: string,
     @Body() rawBody: unknown,
   ): Promise<ReviewClaimResponseDto> {
     const body = parseReviewClaimBody(rawBody);
