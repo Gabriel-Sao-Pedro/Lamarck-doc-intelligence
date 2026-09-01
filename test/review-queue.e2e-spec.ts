@@ -163,11 +163,12 @@ describe('ReviewQueue (e2e)', () => {
     expect(seen.sort()).toEqual([...created].sort());
   });
 
-  // RQ6 — ordenação FIFO (mais antigo primeiro)
-  it('RQ6 — ordena por createdAt ASC, mais antigo primeiro', async () => {
-    const now = Date.now();
-    const older = await needsReview(new Date(now - 5000));
-    const newer = await needsReview(new Date(now));
+  // RQ6 — ordenação FIFO (mais antigo primeiro), com desempate real por id ASC
+  it('RQ6 — ordena por createdAt ASC, mais antigo primeiro, com desempate por id ASC', async () => {
+    const sameInstant = new Date();
+    const docA = await needsReview(sameInstant);
+    const docB = await needsReview(sameInstant);
+    const newer = await needsReview(new Date(sameInstant.getTime() + 5000));
 
     const response = await request(app.getHttpServer())
       .get('/reviews?pageSize=10')
@@ -175,7 +176,16 @@ describe('ReviewQueue (e2e)', () => {
       .expect(200);
 
     const ids: string[] = response.body.items.map((i: { documentId: string }) => i.documentId);
-    expect(ids.indexOf(older.documentId)).toBeLessThan(ids.indexOf(newer.documentId));
+
+    // o mais recente por createdAt vem por último
+    expect(ids.indexOf(newer.documentId)).toBe(ids.length - 1);
+
+    // desempate real entre A e B (mesmo createdAt): ordem por id ASC
+    const [expectedFirst, expectedSecond] = [docA.documentId, docB.documentId].sort();
+    const indexA = ids.indexOf(docA.documentId);
+    const indexB = ids.indexOf(docB.documentId);
+    const [actualFirst, actualSecond] = indexA < indexB ? [docA.documentId, docB.documentId] : [docB.documentId, docA.documentId];
+    expect([actualFirst, actualSecond]).toEqual([expectedFirst, expectedSecond]);
   });
 
   // RQ7 — sem API key
