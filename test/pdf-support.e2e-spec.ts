@@ -11,6 +11,7 @@ import { PrismaService } from '../src/database/prisma.service.js';
 import { ProcessingService } from '../src/processing/processing.service.js';
 import { DocumentAiProvider } from '../src/processing/provider/document-ai-provider.js';
 import { FakeDocumentAiProvider } from '../src/processing/provider/fake-document-ai-provider.js';
+import { TEST_API_KEY } from './support/api-key.js';
 import { buildValidJpeg, buildValidPng } from './support/image-fixtures.js';
 import { buildFakeContent, buildOversizedPdf, buildValidPdf } from './support/pdf-fixtures.js';
 import { cleanupDocument } from './support/processing-fixtures.js';
@@ -75,6 +76,7 @@ describe('PdfSupport (e2e)', () => {
 
     const response = await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', pdf, { filename: 'pdf1.pdf', contentType: 'application/pdf' })
       .expect(202);
 
@@ -91,6 +93,7 @@ describe('PdfSupport (e2e)', () => {
 
     await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', fake, { filename: 'pdf2.pdf', contentType: 'application/pdf' })
       .expect(400);
 
@@ -107,6 +110,7 @@ describe('PdfSupport (e2e)', () => {
 
     await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', distinctFake, { filename: 'documento-fake.txt', contentType: 'application/pdf' })
       .expect(400);
 
@@ -125,6 +129,7 @@ describe('PdfSupport (e2e)', () => {
 
     const response = await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', distinctPdf, { filename: 'pdf4-enganoso.png', contentType: 'image/png' })
       .expect(202);
 
@@ -142,6 +147,7 @@ describe('PdfSupport (e2e)', () => {
 
     await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', oversized, { filename: 'pdf5.pdf', contentType: 'application/pdf' })
       .expect(413);
 
@@ -157,6 +163,7 @@ describe('PdfSupport (e2e)', () => {
 
     const first = await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', distinctPdf, { filename: 'pdf6-a.pdf', contentType: 'application/pdf' })
       .expect(202);
 
@@ -164,6 +171,7 @@ describe('PdfSupport (e2e)', () => {
 
     const second = await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', distinctPdf, { filename: 'pdf6-b.pdf', contentType: 'application/pdf' })
       .expect(202);
 
@@ -188,9 +196,11 @@ describe('PdfSupport (e2e)', () => {
     const [first, second] = await Promise.all([
       request(app.getHttpServer())
         .post('/documents')
+        .set('X-API-Key', TEST_API_KEY)
         .attach('file', distinctPdf, { filename: 'pdf7-a.pdf', contentType: 'application/pdf' }),
       request(app.getHttpServer())
         .post('/documents')
+        .set('X-API-Key', TEST_API_KEY)
         .attach('file', distinctPdf, { filename: 'pdf7-b.pdf', contentType: 'application/pdf' }),
     ]);
 
@@ -225,6 +235,7 @@ describe('PdfSupport (e2e)', () => {
 
     const response = await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', distinctPdf, { filename: 'pdf8.pdf', contentType: 'application/pdf' })
       .expect(202);
 
@@ -244,6 +255,7 @@ describe('PdfSupport (e2e)', () => {
 
     const response = await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', distinctPdf, { filename: 'pdf9.pdf', contentType: 'application/pdf' })
       .expect(202);
 
@@ -268,6 +280,7 @@ describe('PdfSupport (e2e)', () => {
 
     const ingest = await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', distinctPdf, { filename: 'pdf10.pdf', contentType: 'application/pdf' })
       .expect(202);
 
@@ -276,7 +289,7 @@ describe('PdfSupport (e2e)', () => {
     fakeProvider.setMode('SUCCESS');
     await processingService.processOnce('worker-pdf10');
 
-    const response = await request(app.getHttpServer()).get(`/documents/${ingest.body.documentId}`).expect(200);
+    const response = await request(app.getHttpServer()).get(`/documents/${ingest.body.documentId}`).set('X-API-Key', TEST_API_KEY).expect(200);
 
     expect(response.body.documentId).toBe(ingest.body.documentId);
     expect(response.body.status).toBe('COMPLETED');
@@ -292,12 +305,13 @@ describe('PdfSupport (e2e)', () => {
 
     const ingest = await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', distinctPdf, { filename: 'pdf11.pdf', contentType: 'application/pdf' })
       .expect(202);
 
     await trackDocument(sha256);
 
-    const response = await request(app.getHttpServer()).get('/documents?pageSize=100').expect(200);
+    const response = await request(app.getHttpServer()).get('/documents?pageSize=100').set('X-API-Key', TEST_API_KEY).expect(200);
 
     const item = response.body.items.find((i: { documentId: string }) => i.documentId === ingest.body.documentId);
     expect(item).toBeDefined();
@@ -318,6 +332,7 @@ describe('PdfSupport (e2e)', () => {
 
     const ingest = await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', distinctPdf, { filename: 'pdf12.pdf', contentType: 'application/pdf' })
       .expect(202);
 
@@ -336,7 +351,7 @@ describe('PdfSupport (e2e)', () => {
     const documentResult = await prisma.documentResult.findUniqueOrThrow({ where: { processingRunId: run.id } });
     expect(documentResult.documentId).toBe(documentId);
 
-    const queryResponse = await request(app.getHttpServer()).get(`/documents/${documentId}`).expect(200);
+    const queryResponse = await request(app.getHttpServer()).get(`/documents/${documentId}`).set('X-API-Key', TEST_API_KEY).expect(200);
     expect(queryResponse.body.status).toBe('COMPLETED');
     expect(queryResponse.body.result.documentType).toBe('IDENTITY_DOCUMENT');
   });
@@ -349,6 +364,7 @@ describe('PdfSupport (e2e)', () => {
 
     const pngResponse = await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', distinctPng, { filename: 'pdf13.png', contentType: 'image/png' })
       .expect(202);
     await trackDocument(pngSha256);
@@ -361,6 +377,7 @@ describe('PdfSupport (e2e)', () => {
 
     const jpegResponse = await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', distinctJpeg, { filename: 'pdf13.jpg', contentType: 'image/jpeg' })
       .expect(202);
     await trackDocument(jpegSha256);

@@ -5,6 +5,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/database/prisma.service.js';
+import { TEST_API_KEY } from './support/api-key.js';
 import { cleanupDocument, createDocumentWithStatus } from './support/processing-fixtures.js';
 
 describe('DocumentList (e2e)', () => {
@@ -48,7 +49,7 @@ describe('DocumentList (e2e)', () => {
 
   // L1 — lista vazia
   it('L1 — lista vazia retorna 200, items [], total 0, totalPages 0', async () => {
-    const response = await request(app.getHttpServer()).get('/documents').expect(200);
+    const response = await request(app.getHttpServer()).get('/documents').set('X-API-Key', TEST_API_KEY).expect(200);
 
     expect(response.body).toEqual({
       items: [],
@@ -60,7 +61,7 @@ describe('DocumentList (e2e)', () => {
   it('L2 — sem query params usa page=1 e pageSize=20', async () => {
     await newDocument('RECEIVED');
 
-    const response = await request(app.getHttpServer()).get('/documents').expect(200);
+    const response = await request(app.getHttpServer()).get('/documents').set('X-API-Key', TEST_API_KEY).expect(200);
 
     expect(response.body.pagination.page).toBe(1);
     expect(response.body.pagination.pageSize).toBe(20);
@@ -75,15 +76,15 @@ describe('DocumentList (e2e)', () => {
       created.push(doc.documentId);
     }
 
-    const page1 = await request(app.getHttpServer()).get('/documents?page=1&pageSize=2').expect(200);
+    const page1 = await request(app.getHttpServer()).get('/documents?page=1&pageSize=2').set('X-API-Key', TEST_API_KEY).expect(200);
     expect(page1.body.items).toHaveLength(2);
     expect(page1.body.pagination).toEqual({ page: 1, pageSize: 2, total: 5, totalPages: 3 });
 
-    const page2 = await request(app.getHttpServer()).get('/documents?page=2&pageSize=2').expect(200);
+    const page2 = await request(app.getHttpServer()).get('/documents?page=2&pageSize=2').set('X-API-Key', TEST_API_KEY).expect(200);
     expect(page2.body.items).toHaveLength(2);
     expect(page2.body.pagination).toEqual({ page: 2, pageSize: 2, total: 5, totalPages: 3 });
 
-    const page3 = await request(app.getHttpServer()).get('/documents?page=3&pageSize=2').expect(200);
+    const page3 = await request(app.getHttpServer()).get('/documents?page=3&pageSize=2').set('X-API-Key', TEST_API_KEY).expect(200);
     expect(page3.body.items).toHaveLength(1);
     expect(page3.body.pagination).toEqual({ page: 3, pageSize: 2, total: 5, totalPages: 3 });
 
@@ -103,7 +104,7 @@ describe('DocumentList (e2e)', () => {
     const docB = await newDocument('RECEIVED', sameInstant);
     const newer = await newDocument('RECEIVED', new Date(sameInstant.getTime() + 5000));
 
-    const response = await request(app.getHttpServer()).get('/documents?pageSize=10').expect(200);
+    const response = await request(app.getHttpServer()).get('/documents?pageSize=10').set('X-API-Key', TEST_API_KEY).expect(200);
     const ids: string[] = response.body.items.map((i: { documentId: string }) => i.documentId);
 
     // o mais recente por createdAt vem primeiro
@@ -124,7 +125,7 @@ describe('DocumentList (e2e)', () => {
     await newDocument('COMPLETED');
     await newDocument('FAILED');
 
-    const response = await request(app.getHttpServer()).get('/documents?status=COMPLETED').expect(200);
+    const response = await request(app.getHttpServer()).get('/documents?status=COMPLETED').set('X-API-Key', TEST_API_KEY).expect(200);
 
     expect(response.body.items).toHaveLength(2);
     expect(response.body.items.every((i: { status: string }) => i.status === 'COMPLETED')).toBe(true);
@@ -134,29 +135,29 @@ describe('DocumentList (e2e)', () => {
 
   // L6 — status inválido
   it('L6 — status inválido retorna 400', async () => {
-    await request(app.getHttpServer()).get('/documents?status=NOT_A_STATUS').expect(400);
+    await request(app.getHttpServer()).get('/documents?status=NOT_A_STATUS').set('X-API-Key', TEST_API_KEY).expect(400);
   });
 
   // L7 — page inválida
   it('L7 — page inválida (0, negativo, texto) retorna 400', async () => {
-    await request(app.getHttpServer()).get('/documents?page=0').expect(400);
-    await request(app.getHttpServer()).get('/documents?page=-1').expect(400);
-    await request(app.getHttpServer()).get('/documents?page=abc').expect(400);
+    await request(app.getHttpServer()).get('/documents?page=0').set('X-API-Key', TEST_API_KEY).expect(400);
+    await request(app.getHttpServer()).get('/documents?page=-1').set('X-API-Key', TEST_API_KEY).expect(400);
+    await request(app.getHttpServer()).get('/documents?page=abc').set('X-API-Key', TEST_API_KEY).expect(400);
   });
 
   // L8 — pageSize inválido
   it('L8 — pageSize inválido (0, 101, negativo, texto) retorna 400', async () => {
-    await request(app.getHttpServer()).get('/documents?pageSize=0').expect(400);
-    await request(app.getHttpServer()).get('/documents?pageSize=101').expect(400);
-    await request(app.getHttpServer()).get('/documents?pageSize=-1').expect(400);
-    await request(app.getHttpServer()).get('/documents?pageSize=abc').expect(400);
+    await request(app.getHttpServer()).get('/documents?pageSize=0').set('X-API-Key', TEST_API_KEY).expect(400);
+    await request(app.getHttpServer()).get('/documents?pageSize=101').set('X-API-Key', TEST_API_KEY).expect(400);
+    await request(app.getHttpServer()).get('/documents?pageSize=-1').set('X-API-Key', TEST_API_KEY).expect(400);
+    await request(app.getHttpServer()).get('/documents?pageSize=abc').set('X-API-Key', TEST_API_KEY).expect(400);
   });
 
   // L9 — página além do fim
   it('L9 — página além do total retorna 200 com items vazio', async () => {
     await newDocument('RECEIVED');
 
-    const response = await request(app.getHttpServer()).get('/documents?page=999&pageSize=20').expect(200);
+    const response = await request(app.getHttpServer()).get('/documents?page=999&pageSize=20').set('X-API-Key', TEST_API_KEY).expect(200);
 
     expect(response.body.items).toEqual([]);
     expect(response.body.pagination.page).toBe(999);
@@ -167,7 +168,7 @@ describe('DocumentList (e2e)', () => {
   it('L10 — resposta não expõe campos extraídos nem infraestrutura', async () => {
     await newDocument('COMPLETED');
 
-    const response = await request(app.getHttpServer()).get('/documents').expect(200);
+    const response = await request(app.getHttpServer()).get('/documents').set('X-API-Key', TEST_API_KEY).expect(200);
 
     const raw = JSON.stringify(response.body);
     for (const forbidden of [
@@ -197,7 +198,7 @@ describe('DocumentList (e2e)', () => {
   it('L11 — GET /documents/:id continua funcionando', async () => {
     const doc = await newDocument('COMPLETED');
 
-    const response = await request(app.getHttpServer()).get(`/documents/${doc.documentId}`).expect(200);
+    const response = await request(app.getHttpServer()).get(`/documents/${doc.documentId}`).set('X-API-Key', TEST_API_KEY).expect(200);
     expect(response.body.documentId).toBe(doc.documentId);
     expect(response.body.status).toBe('COMPLETED');
   });

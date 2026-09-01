@@ -12,6 +12,7 @@ import { ProcessingService } from '../src/processing/processing.service.js';
 import { DocumentAiProvider } from '../src/processing/provider/document-ai-provider.js';
 import { FakeDocumentAiProvider } from '../src/processing/provider/fake-document-ai-provider.js';
 import type { ProviderResult } from '../src/processing/provider/provider.types.js';
+import { TEST_API_KEY } from './support/api-key.js';
 import { buildValidPng } from './support/image-fixtures.js';
 import { cleanupDocument, createReceivedDocument } from './support/processing-fixtures.js';
 
@@ -96,7 +97,9 @@ describe('DocumentQuery (e2e)', () => {
 
   // Q1 — documento inexistente
   it('Q1 — GET /documents/:id com id inexistente retorna 404', async () => {
-    const response = await request(app.getHttpServer()).get(`/documents/${randomUUID()}`);
+    const response = await request(app.getHttpServer())
+      .get(`/documents/${randomUUID()}`)
+      .set('X-API-Key', TEST_API_KEY);
     expect(response.status).toBe(404);
   });
 
@@ -104,7 +107,7 @@ describe('DocumentQuery (e2e)', () => {
   it('Q2 — RECEIVED retorna 200 com result null', async () => {
     const { documentId } = await newDocument();
 
-    const response = await request(app.getHttpServer()).get(`/documents/${documentId}`).expect(200);
+    const response = await request(app.getHttpServer()).get(`/documents/${documentId}`).set('X-API-Key', TEST_API_KEY).expect(200);
 
     expect(response.body.documentId).toBe(documentId);
     expect(response.body.status).toBe('RECEIVED');
@@ -117,7 +120,7 @@ describe('DocumentQuery (e2e)', () => {
     const claimed = await jobClaimService.claimNextEligibleJob('worker-query-fixture');
     expect(claimed?.jobId).toBe(jobId);
 
-    const response = await request(app.getHttpServer()).get(`/documents/${documentId}`).expect(200);
+    const response = await request(app.getHttpServer()).get(`/documents/${documentId}`).set('X-API-Key', TEST_API_KEY).expect(200);
 
     expect(response.body.status).toBe('PROCESSING');
     expect(response.body.result).toBeNull();
@@ -128,7 +131,7 @@ describe('DocumentQuery (e2e)', () => {
     const { documentId, jobId } = await newDocument();
     await claimAndFinalize(jobId, { kind: 'TECHNICAL_FAILURE', errorType: 'SIMULATED' });
 
-    const response = await request(app.getHttpServer()).get(`/documents/${documentId}`).expect(200);
+    const response = await request(app.getHttpServer()).get(`/documents/${documentId}`).set('X-API-Key', TEST_API_KEY).expect(200);
 
     expect(response.body.status).toBe('RETRYING');
     expect(response.body.result).toBeNull();
@@ -139,7 +142,7 @@ describe('DocumentQuery (e2e)', () => {
     const { documentId, jobId } = await newDocument();
     await claimAndFinalize(jobId, { kind: 'SUCCESS', result: successResult() });
 
-    const response = await request(app.getHttpServer()).get(`/documents/${documentId}`).expect(200);
+    const response = await request(app.getHttpServer()).get(`/documents/${documentId}`).set('X-API-Key', TEST_API_KEY).expect(200);
 
     expect(response.body.status).toBe('COMPLETED');
     expect(response.body.result).not.toBeNull();
@@ -154,7 +157,7 @@ describe('DocumentQuery (e2e)', () => {
     const { documentId, jobId } = await newDocument();
     await claimAndFinalize(jobId, { kind: 'NEEDS_REVIEW', result: needsReviewResult() });
 
-    const response = await request(app.getHttpServer()).get(`/documents/${documentId}`).expect(200);
+    const response = await request(app.getHttpServer()).get(`/documents/${documentId}`).set('X-API-Key', TEST_API_KEY).expect(200);
 
     expect(response.body.status).toBe('NEEDS_REVIEW');
     expect(response.body.result).not.toBeNull();
@@ -174,7 +177,7 @@ describe('DocumentQuery (e2e)', () => {
     const exhausted = await jobClaimService.claimNextEligibleJob('worker-query-fixture');
     expect(exhausted).toBeNull();
 
-    const response = await request(app.getHttpServer()).get(`/documents/${documentId}`).expect(200);
+    const response = await request(app.getHttpServer()).get(`/documents/${documentId}`).set('X-API-Key', TEST_API_KEY).expect(200);
 
     expect(response.body.status).toBe('FAILED');
     expect(response.body.result).toBeNull();
@@ -189,7 +192,7 @@ describe('DocumentQuery (e2e)', () => {
     const { documentId, jobId } = await newDocument();
     await claimAndFinalize(jobId, { kind: 'SUCCESS', result: successResult() });
 
-    const response = await request(app.getHttpServer()).get(`/documents/${documentId}`).expect(200);
+    const response = await request(app.getHttpServer()).get(`/documents/${documentId}`).set('X-API-Key', TEST_API_KEY).expect(200);
 
     const raw = JSON.stringify(response.body);
     for (const forbidden of [
@@ -215,6 +218,7 @@ describe('DocumentQuery (e2e)', () => {
 
     const ingestResponse = await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', png, { filename: 'q9.png', contentType: 'image/png' })
       .expect(202);
 
@@ -222,14 +226,14 @@ describe('DocumentQuery (e2e)', () => {
     trackedDocumentIds.push(documentId);
     expect(ingestResponse.body.status).toBe('RECEIVED');
 
-    const beforeProcessing = await request(app.getHttpServer()).get(`/documents/${documentId}`).expect(200);
+    const beforeProcessing = await request(app.getHttpServer()).get(`/documents/${documentId}`).set('X-API-Key', TEST_API_KEY).expect(200);
     expect(beforeProcessing.body.status).toBe('RECEIVED');
     expect(beforeProcessing.body.result).toBeNull();
 
     const processed = await processingService.processOnce('worker-vertical-query');
     expect(processed).toBe('PROCESSED');
 
-    const afterProcessing = await request(app.getHttpServer()).get(`/documents/${documentId}`).expect(200);
+    const afterProcessing = await request(app.getHttpServer()).get(`/documents/${documentId}`).set('X-API-Key', TEST_API_KEY).expect(200);
     expect(afterProcessing.body.status).toBe('COMPLETED');
     expect(afterProcessing.body.result).not.toBeNull();
     expect(afterProcessing.body.result.documentType).toBe('IDENTITY_DOCUMENT');

@@ -8,6 +8,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/database/prisma.service.js';
+import { TEST_API_KEY } from './support/api-key.js';
 import {
   buildFakeImageContent,
   buildOversizedJpeg,
@@ -57,6 +58,7 @@ describe('DocumentsController (e2e)', () => {
 
     const response = await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', png, { filename: 't1.png', contentType: 'image/png' })
       .expect(202);
 
@@ -80,6 +82,7 @@ describe('DocumentsController (e2e)', () => {
 
     await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', jpeg, { filename: 't3.jpg', contentType: 'image/jpeg' })
       .expect(202);
 
@@ -98,6 +101,7 @@ describe('DocumentsController (e2e)', () => {
 
     const first = await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', distinctPng, { filename: 't4-a.png', contentType: 'image/png' })
       .expect(202);
 
@@ -105,6 +109,7 @@ describe('DocumentsController (e2e)', () => {
 
     const second = await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', distinctPng, { filename: 't4-b.png', contentType: 'image/png' })
       .expect(202);
 
@@ -124,6 +129,7 @@ describe('DocumentsController (e2e)', () => {
 
     await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', oversized, { filename: 't6.jpg', contentType: 'image/jpeg' })
       .expect(413);
 
@@ -138,6 +144,7 @@ describe('DocumentsController (e2e)', () => {
 
     await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', fake, { filename: 't7.jpg', contentType: 'image/jpeg' })
       .expect(400);
 
@@ -160,9 +167,11 @@ describe('DocumentsController (e2e)', () => {
     const [first, second] = await Promise.all([
       request(app.getHttpServer())
         .post('/documents')
+        .set('X-API-Key', TEST_API_KEY)
         .attach('file', distinctPng, { filename: 't9-a.png', contentType: 'image/png' }),
       request(app.getHttpServer())
         .post('/documents')
+        .set('X-API-Key', TEST_API_KEY)
         .attach('file', distinctPng, { filename: 't9-b.png', contentType: 'image/png' }),
     ]);
 
@@ -202,6 +211,7 @@ describe('DocumentsController (e2e)', () => {
 
     await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', distinctJpeg, { filename: 't10.jpg', contentType: 'image/jpeg' })
       .expect(202);
 

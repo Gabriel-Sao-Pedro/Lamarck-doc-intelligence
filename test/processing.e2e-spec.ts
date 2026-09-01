@@ -11,6 +11,7 @@ import { ProcessingService } from '../src/processing/processing.service.js';
 import { DocumentAiProvider } from '../src/processing/provider/document-ai-provider.js';
 import { FakeDocumentAiProvider } from '../src/processing/provider/fake-document-ai-provider.js';
 import { ProviderTechnicalError, type ProviderInput, type ProviderResult } from '../src/processing/provider/provider.types.js';
+import { TEST_API_KEY } from './support/api-key.js';
 import { buildValidPng } from './support/image-fixtures.js';
 import { cleanupDocument, createReceivedDocument } from './support/processing-fixtures.js';
 
@@ -458,6 +459,7 @@ describe('Processing (e2e)', () => {
 
     const response = await request(app.getHttpServer())
       .post('/documents')
+      .set('X-API-Key', TEST_API_KEY)
       .attach('file', png, { filename: 'p15.png', contentType: 'image/png' })
       .expect(202);
 
