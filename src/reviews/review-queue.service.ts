@@ -5,7 +5,12 @@ import { DocumentStatus } from '../generated/prisma/enums.js';
 import type { ReviewQueueQuery } from './dto/review-queue-query.dto.js';
 import type { ReviewQueueResponseDto } from './dto/review-queue-response.dto.js';
 
-/
+/**
+ * Somente leitura (Fase 3.1). Sem claim, sem lease, sem escrita — só
+ * apresenta a fila. Ordenação createdAt ASC + id ASC: FIFO real, diferente
+ * de GET /documents (mais recente primeiro), porque aqui o objetivo é
+ * trabalho pendente, não histórico.
+ */
 @Injectable()
 export class ReviewQueueService {
   constructor(private readonly prisma: PrismaService) {}
