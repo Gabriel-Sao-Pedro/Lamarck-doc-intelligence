@@ -4,7 +4,7 @@
 
 Implementar `GET /documents` com paginação e filtro opcional por status,
 primeira fatia da Fase 2 (`docs/specification.md` §23). Escopo definido em
-`docs/ai/prompts/claude/08-claude-document-list-prompt.md`. Nenhuma
+`docs/ai/prompts/claude/08-claude-phase2-document-list-prompt.md`. Nenhuma
 funcionalidade além de listagem/paginação/filtro entrou nesta tarefa.
 
 ## 2. Contrato de `GET /documents`
@@ -163,6 +163,6 @@ a função `createDocumentWithStatus` em
 `test/support/processing-fixtures.ts`, a suíte
 `test/document-list.e2e-spec.ts` e este relatório — foi gerado por mim
 (Claude) nesta tarefa, a partir do prompt em
-`docs/ai/prompts/claude/08-claude-document-list-prompt.md`. Não fiz
+`docs/ai/prompts/claude/08-claude-phase2-document-list-prompt.md`. Não fiz
 revisão humana desta implementação — essa revisão ainda não aconteceu e
 não é responsabilidade minha realizá-la.
