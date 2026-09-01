@@ -93,10 +93,11 @@ processamento — nenhuma delas precisa ser definida para uso normal:
 
 ## Enviando e consultando um documento (vertical slice)
 
-Com a aplicação rodando (`npm run start:dev`), a Fase 1 aceita imagens
-`JPEG`/`JPG`/`PNG` de até 10 MB representando um documento de identidade
-fictício. O tipo do arquivo é validado pelo conteúdo real (magic bytes), não
-pela extensão.
+Com a aplicação rodando (`npm run start:dev`), a API aceita arquivos
+`JPEG`/`JPG`/`PNG`/`PDF` de até 10 MB representando um documento de
+identidade fictício. O tipo do arquivo é validado pelo conteúdo real (magic
+bytes — incluindo a assinatura `%PDF-` para PDF), não pela extensão nem pelo
+`Content-Type` declarado no upload.
 
 ### 1. Envie um documento
 
@@ -223,15 +224,13 @@ forma determinística.
 Deliberadamente fora desta entrega (ver `docs/specification.md` §21–§25 e
 `PROJECT_CONTEXT.md`):
 
-- só `JPEG`/`JPG`/`PNG`, limite de 10 MB por arquivo;
+- `JPEG`/`JPG`/`PNG`/`PDF`, limite de 10 MB por arquivo;
 - extração feita por um **provider fake determinístico** — nenhum modelo de
-  IA real está integrado nesta fase;
-- sem suporte a PDF;
+  IA real está integrado nesta fase, incluindo para PDF (sem OCR/parser real,
+  ver `docs/implementation/009-phase2-pdf-support.md`);
 - sem autenticação;
 - sem fila de revisão humana operacional (o resultado de `NEEDS_REVIEW` é
   preservado no banco, mas não há endpoint/fluxo de correção humana ainda);
-- sem listagem (`GET /documents`), filtro ou paginação — só consulta
-  individual por `id`;
 - sem sugestão de nome padronizado de arquivo (planejado para uma fase
   futura, `docs/specification.md` §24);
 - storage do arquivo é local em disco (`STORAGE_LOCAL_DIR`), não um serviço
