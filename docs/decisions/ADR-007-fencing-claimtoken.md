@@ -4,6 +4,13 @@
 
 Aceito
 
+Nota sobre a data desta ADR: o mecanismo de `claimToken` já havia sido
+implementado na foundation, como correção do finding `F-001` (fencing de
+lease insuficiente). Esta ADR foi versionada mais tarde, durante a
+consolidação documental da Fase 2.2, para formalizar por escrito uma
+decisão que já estava em produção — a data de criação do arquivo não é a
+data em que o mecanismo nasceu.
+
 ## Contexto
 
 O worker não mantém a transação do PostgreSQL aberta enquanto o provider está
