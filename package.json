@@ -1,7 +1,7 @@
 {
   "name": "lamarck-doc-intelligence",
   "version": "0.0.1",
-  "description": "Backend do DOC Intelligence — desafio Lamarck (fase de foundation, ainda sem regra de negócio)",
+  "description": "Backend do DOC Intelligence — desafio Lamarck (vertical slice mínima da Fase 1: ingestão, processamento assíncrono e consulta)",
   "author": "",
   "private": true,
   "license": "UNLICENSED",
