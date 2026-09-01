@@ -129,9 +129,6 @@ Ele será usado pelo worker para saber quais trabalhos estão disponíveis.
 Também poderá guardar informações necessárias para controlar tentativas e
 evitar que dois workers processem o mesmo job.
 
-O contador `attemptCount` do `ProcessingJob` será a fonte de verdade operacional
-para decidir se ainda é possível iniciar outra tentativa.
-
 ### ProcessingRun
 
 Representa uma execução do processamento.
@@ -139,11 +136,11 @@ Representa uma execução do processamento.
 Quero manter esses registros porque o processamento pode mudar ao longo do
 tempo.
 
-Cada tentativa iniciada cria um `ProcessingRun` com o mesmo número usado no
-`ProcessingJob.attemptCount`.
+Por exemplo, um documento pode ser processado hoje com uma versão de prompt e
+depois ser processado novamente com outra.
 
-O `ProcessingRun` existe para histórico e auditoria. Não vou calcular o limite
-de retry contando runs no banco.
+Em vez de sobrescrever a execução anterior, será criado um novo
+`ProcessingRun`.
 
 ### DocumentResult
 
@@ -158,21 +155,14 @@ Ele deve estar relacionado à execução que produziu aquele resultado.
 O fluxo inicial será:
 
 1. a API recebe o arquivo;
-2. aplica o limite de 10 MB já no parser de upload;
-3. valida tamanho restante e tipo;
-4. calcula SHA-256;
-5. verifica se o conteúdo já existe;
-6. armazena o arquivo com uma chave interna única;
-7. cria `Document` e `ProcessingJob` juntos, na mesma transação do PostgreSQL;
-8. retorna `202 Accepted`.
+2. valida tamanho e tipo;
+3. calcula SHA-256;
+4. verifica se o conteúdo já existe;
+5. armazena o arquivo com uma chave interna única;
+6. tenta criar o registro do documento e o job;
 
-Escolhi criar `Document` e `ProcessingJob` na mesma transação porque não quero
-que um documento seja salvo em `RECEIVED` sem um job capaz de processá-lo.
-
-Se essa transação falhar, nenhum dos dois registros deve ficar persistido.
-
-Como o arquivo local já pode ter sido salvo antes da transação, a aplicação
-tenta removê-lo como compensação.
+A criação de `Document` e `ProcessingJob` deve acontecer na mesma transação. Se a transação falhar, nenhum dos dois registros deve permanecer persistido.
+7. retorna `202 Accepted`.
 
 O processamento continua depois dessa resposta.
 
@@ -251,8 +241,8 @@ não conseguir ser concluída.
 Na primeira versão pretendo resolver isso com uma compensação simples:
 
 - salvar o arquivo;
-- tentar persistir `Document` e `ProcessingJob` juntos na mesma transação;
-- se a transação falhar, tentar remover o arquivo que acabou de ser salvo.
+- tentar persistir o documento e o job;
+- se a persistência falhar, tentar remover o arquivo que acabou de ser salvo.
 
 A mesma compensação vale quando duas requisições iguais passam pela verificação
 inicial e uma delas perde a corrida na restrição única de hash.
@@ -288,10 +278,6 @@ baseada em:
 
 `FOR UPDATE SKIP LOCKED`
 
-O claim do job, o incremento de `attemptCount`, a criação do `ProcessingRun`
-daquela tentativa e a mudança do documento para `PROCESSING` devem acontecer de
-forma consistente dentro da operação curta de claim.
-
 O ponto mais importante não é apenas usar o lock.
 
 O lock deve existir apenas durante o momento em que o worker pega o trabalho.
@@ -325,32 +311,12 @@ tentativa passa a contar dentro do limite de três.
 Se o worker desaparecer e o lease expirar, considero aquela tentativa como uma
 falha técnica.
 
-Ela consome uma das três tentativas.
+Ela consome uma das três tentativas e outro worker poderá recuperar o job.
 
-Não vou criar um processo separado só para procurar leases vencidos nesta
-primeira versão.
-
-A própria busca de trabalho do worker será responsável por encontrar jobs com
-lease expirado.
-
-Quando um worker encontrar um desses jobs, ele encerra a tentativa anterior
-como falha técnica e aplica as transições já permitidas pela state machine.
-
-Se ainda houver tentativa disponível:
-
-`PROCESSING -> RETRYING -> PROCESSING`
-
-e uma nova tentativa começa.
-
-Se o limite já tiver sido atingido:
-
-`PROCESSING -> RETRYING -> FAILED`
-
-Até algum worker fazer essa verificação, o documento pode continuar aparecendo
-como `PROCESSING` mesmo com o lease vencido. Nesse caso, o lease é o sinal
-operacional de que aquele processamento já pode ser recuperado.
-
-Escolhi isso para evitar adicionar um "reaper" separado só para esta entrega.
+Escolhi contar a tentativa perdida porque, depois que o worker começou o
+processamento, não tenho como garantir que nenhuma chamada ao provider chegou a
+acontecer. Também não quero permitir reprocessamentos infinitos em caso de
+quedas repetidas.
 
 Para evitar que um processamento normal seja considerado morto apenas porque o
 provider é lento, o tempo de lease deverá ser maior que o timeout configurado
@@ -361,6 +327,35 @@ Na primeira versão não pretendo criar um sistema complexo de heartbeat.
 Se um worker antigo voltar depois de perder seu lease, ele não deve conseguir
 finalizar o job livremente. A atualização final deve confirmar que aquele
 worker/claim ainda é o proprietário válido antes de gravar o resultado.
+
+
+### Fencing do claim
+
+Depois da implementação da Fase 1, essa proteção ficou mais concreta.
+
+Cada claim válido recebe um `claimToken` novo, gerado no momento em que o worker
+pega o job. Esse token representa aquela posse específica do trabalho.
+
+Quando o processamento termina, a finalização não confia apenas no `documentId`
+ou em quem era o worker. Ela também precisa confirmar que o `claimToken`
+continua sendo o token atual do job.
+
+A ideia é evitar este cenário:
+
+`worker A pega o job -> lease expira -> worker B recupera -> worker A volta atrasado`
+
+Sem fencing, o worker A ainda poderia tentar gravar um resultado depois de já
+ter perdido a posse.
+
+Com o token:
+
+`claim antigo != claim atual -> finalização rejeitada`
+
+O token pertence ao estado operacional de `ProcessingJob`. O `ProcessingRun`
+continua sendo histórico da tentativa e não vira a fonte de verdade para saber
+quem pode finalizar o job.
+
+Essa decisão está detalhada no ADR-007.
 
 ---
 
@@ -410,15 +405,7 @@ aplicação.
 
 Uma execução poderá ter no máximo três tentativas no total.
 
-O `ProcessingJob.attemptCount` será usado para decidir operacionalmente se uma
-nova tentativa ainda pode começar.
-
-O contador é incrementado quando a tentativa realmente começa.
-
-Ao mesmo tempo, será criado um `ProcessingRun` com aquele mesmo número de
-tentativa para preservar o histórico.
-
-Assim, o job controla o limite e o run explica o que aconteceu.
+Cada tentativa deve ficar registrada.
 
 Um erro técnico poderá gerar outra tentativa.
 
@@ -605,7 +592,6 @@ A arquitetura assume que os documentos podem conter dados pessoais.
 
 Por isso:
 
-- o limite de 10 MB deve ser aplicado já no parser do upload;
 - arquivos não serão públicos;
 - caminhos internos não serão retornados pela API;
 - nomes enviados pelo usuário não serão usados como paths;
@@ -761,41 +747,35 @@ infraestrutura desproporcional ao que preciso demonstrar.
 
 ---
 
-## 26. Divisão de trabalho e revisão
+## 26. Uso de IA durante o desenvolvimento
 
-Durante a implementação, vou usar o Claude principalmente para acelerar a parte
-operacional do código, mas as decisões de arquitetura, escopo e aceite continuam
-comigo.
+No backend, mantive um fluxo simples: o Claude foi usado como agente de
+implementação nas etapas em que houve geração ou alteração de código, e cada
+slice passou por revisão antes de seguir para o merge.
 
-O Claude pode trabalhar em:
+O objetivo foi evitar mudanças grandes demais de uma vez e deixar claro o que
+estava sendo validado em cada etapa.
 
-- estrutura do projeto;
-- API e upload;
-- storage e deduplicação;
-- processamento e worker;
-- retry e state machine;
-- histórico de processamento;
-- recursos das fases seguintes, quando eu decidir avançar.
+O fluxo usado foi, em geral:
 
-As partes compartilhadas continuam controladas, principalmente:
+`definir escopo -> implementar -> testar -> revisar -> corrigir -> validar -> merge`
 
-- `prisma/schema.prisma`;
-- migrations;
-- enums;
+As partes compartilhadas não devem ser alteradas sem uma decisão anterior.
+
+Exemplos:
+
+- schema principal do banco;
 - contratos entre módulos;
+- enums;
 - state machine;
-- contratos da API.
+- migrations.
 
-Se uma tarefa exigir mudar algum desses pontos, a mudança deve ser apresentada
-antes de ser aplicada.
+Quando uma revisão encontrou um problema, a correção ficou separada da
+implementação original e foi validada novamente antes do merge.
 
-A revisão final das mudanças é humana. Eu quero conferir principalmente se o
-código continua de acordo com a especificação, se os testes fazem sentido e se
-consigo explicar a decisão tomada.
-
-Se uma correção começar a virar uma nova implementação, prefiro separar uma
-nova tarefa e devolver a implementação ao Claude em vez de alterar muita
-coisa manualmente durante a revisão.
+Esse processo foi especialmente importante em pontos de concorrência, retry,
+lease e fencing, onde uma alteração aparentemente pequena poderia quebrar
+invariantes do processamento.
 
 ---
 
@@ -810,7 +790,8 @@ Pretendo documentar pelo menos:
 - armazenamento local atrás de uma interface;
 - deduplicação com SHA-256;
 - histórico imutável de processamento;
-- resposta `202 Accepted` também para duplicados.
+- resposta `202 Accepted` também para duplicados;
+- fencing por `claimToken` em jobs controlados por lease.
 
 Os ADRs terão uma explicação curta sobre:
 
@@ -835,3 +816,75 @@ evolução futura.
 Se durante a implementação alguma hipótese desta arquitetura se mostrar errada,
 vou registrar a mudança em vez de esconder a diferença entre o que planejei e
 o que realmente aconteceu.
+
+---
+
+## 29. Atualizações confirmadas depois da implementação
+
+A arquitetura principal não mudou durante a Fase 1 e o começo da Fase 2, mas
+alguns pontos ficaram mais concretos depois que o código e os testes foram
+feitos.
+
+### Fase 1
+
+A vertical slice implementada confirmou o desenho principal:
+
+`upload -> persistência -> job -> worker -> resultado -> consulta`
+
+Também confirmou:
+
+- PostgreSQL como fila operacional;
+- claim curto com `FOR UPDATE SKIP LOCKED`;
+- provider executado fora da transação;
+- lease para recuperação;
+- `claimToken` como fencing;
+- `ProcessingRun` como histórico;
+- storage local atrás de `DocumentStorage`;
+- SHA-256 como deduplicação exata;
+- `GET /documents/:id` como consulta do estado e resultado.
+
+### Fase 2
+
+A evolução da API continua compatível com a mesma arquitetura.
+
+A listagem usa:
+
+`GET /documents`
+
+com paginação e filtro por status, sem carregar PII desnecessária.
+
+O suporte a PDF também reaproveita o pipeline existente. O tipo físico do
+arquivo é detectado pelo conteúdo, o SHA-256 continua sendo calculado sobre os
+bytes crus e o documento segue para o mesmo `ProcessingJob`.
+
+Isso significa que adicionar PDF não criou:
+
+- nova fila;
+- novo worker;
+- novo modelo de persistência;
+- nova state machine;
+- nova infraestrutura.
+
+A API key simples e OpenAPI continuam sendo incrementos de superfície de API,
+não mudanças na arquitetura central.
+
+### O que continua para uma fase posterior
+
+Continuam planejados para depois:
+
+- provider multimodal real;
+- revisão humana operacional;
+- claim/concorrência entre revisores;
+- correção de campos;
+- nome padronizado;
+- segundo tipo documental;
+- reprocessamento explícito.
+
+Esses pontos podem exigir novos ADRs quando forem implementados, mas não mudam
+as decisões centrais já adotadas.
+
+
+
+### Limite de upload
+
+O limite de 10 MB deve ser aplicado no parser multipart, antes de aceitar um arquivo arbitrariamente grande em memória.

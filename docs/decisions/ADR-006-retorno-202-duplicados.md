@@ -41,9 +41,9 @@ Documento novo:
 
 ```json
 {
-  "documentId": "uuid",
-  "status": "RECEIVED",
-  "deduplicated": false
+ "documentId": "uuid",
+ "status": "RECEIVED",
+ "deduplicated": false
 }
 ```
 
@@ -51,9 +51,9 @@ Documento já existente:
 
 ```json
 {
-  "documentId": "uuid-do-documento-existente",
-  "status": "COMPLETED",
-  "deduplicated": true
+ "documentId": "uuid-do-documento-existente",
+ "status": "COMPLETED",
+ "deduplicated": true
 }
 ```
 
@@ -161,7 +161,7 @@ Com essa decisão:
 - `deduplicated` passa a ser parte importante do contrato;
 - `documentId` sempre aponta para o recurso que deve ser consultado;
 - o status retornado pode ser diferente de `RECEIVED` quando o documento já
-  existia;
+ existia;
 - a API precisa documentar claramente esse comportamento;
 - existe um trade-off semântico que precisa continuar visível.
 

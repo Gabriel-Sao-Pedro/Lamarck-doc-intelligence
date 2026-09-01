@@ -13,8 +13,8 @@ A mudança ficou pequena e dentro do escopo da correção.
 - **Branch:** `feat/project-foundation`
 - **HEAD:** `966ccc131ffb612b791188dc93b0e3f204f671e2`
 - **Commits revisados:**
-  - `1a789d2` — `fix: add lease fencing token to processing jobs`
-  - `966ccc1` — `docs: record foundation fencing correction`
+ - `1a789d2` — `fix: add lease fencing token to processing jobs`
+ - `966ccc1` — `docs: record foundation fencing correction`
 - **CI:** run `33443144325` — `SUCCESS`
 - **Working tree:** sem alterações rastreadas
 

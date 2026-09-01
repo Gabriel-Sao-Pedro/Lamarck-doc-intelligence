@@ -19,13 +19,13 @@ Eu mesmo corrigi esses dois pontos. Depois das correções, fiz uma checagem foc
 - **Base da feature:** `4465848`
 - **HEAD final revisado:** `38062858e59f2c7386b33713d952825fcca8e19d`
 - **Commits principais da implementação:**
-  - `efb1f5b` — implementação da ingestão;
-  - `baf76c7` — relatório da implementação;
-  - `3a0456f` — inclusão do E2E na CI;
-  - `e42e7ae` — ajuste do relatório.
+ - `efb1f5b` — implementação da ingestão;
+ - `baf76c7` — relatório da implementação;
+ - `3a0456f` — inclusão do E2E na CI;
+ - `e42e7ae` — ajuste do relatório.
 - **Commits das minhas correções após a revisão:**
-  - `f32f82f` — fortalecimento do teste de concorrência;
-  - `3806285` — correção da contagem E2E no relatório.
+ - `f32f82f` — fortalecimento do teste de concorrência;
+ - `3806285` — correção da contagem E2E no relatório.
 - **CI final:** run `33449569118` — `SUCCESS`.
 
 A run final corresponde ao HEAD `38062858e59f2c7386b33713d952825fcca8e19d` e executou o E2E com sucesso.
@@ -75,9 +75,9 @@ Na primeira revisão da ingestão, confirmei dois findings de severidade baixa.
 
 ### ING-001 — T9 não validava a integridade física do arquivo vencedor
 
-**Severidade:** BAIXA  
-**Status inicial:** CONFIRMADO  
-**Status final:** CORRIGIDO E VALIDADO  
+**Severidade:** BAIXA 
+**Status inicial:** CONFIRMADO 
+**Status final:** CORRIGIDO E VALIDADO 
 **Correção feita por mim no commit:** `f32f82f`
 
 O teste de concorrência já comprovava que duas requisições simultâneas com o mesmo arquivo terminavam com:
@@ -117,9 +117,9 @@ Nenhuma alteração de código de produção foi necessária para corrigir esse 
 
 ### ING-002 — contagem de testes E2E divergente no relatório
 
-**Severidade:** BAIXA  
-**Status inicial:** CONFIRMADO  
-**Status final:** CORRIGIDO E VALIDADO  
+**Severidade:** BAIXA 
+**Status inicial:** CONFIRMADO 
+**Status final:** CORRIGIDO E VALIDADO 
 **Correção feita por mim no commit:** `3806285`
 
 O relatório `003` registrava `9/9` testes E2E, mas a execução real mostrava `8/8`.
@@ -253,23 +253,23 @@ Depois disso começa a próxima etapa da vertical slice:
 
 ```text
 ProcessingJob
-        ↓
+ ↓
 claim seguro
-        ↓
+ ↓
 claimToken
-        ↓
+ ↓
 lease
-        ↓
+ ↓
 worker
-        ↓
+ ↓
 provider fake
-        ↓
+ ↓
 retry
-        ↓
+ ↓
 ProcessingRun
-        ↓
+ ↓
 DocumentResult
-        ↓
+ ↓
 COMPLETED / NEEDS_REVIEW / FAILED
 ```
 

@@ -89,21 +89,21 @@ Resposta esperada:
 
 ```json
 {
-  "items": [
-    {
-      "documentId": "uuid",
-      "status": "COMPLETED",
-      "documentType": "IDENTITY_DOCUMENT",
-      "createdAt": "ISO-8601",
-      "updatedAt": "ISO-8601"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "pageSize": 20,
-    "total": 1,
-    "totalPages": 1
-  }
+ "items": [
+ {
+ "documentId": "uuid",
+ "status": "COMPLETED",
+ "documentType": "IDENTITY_DOCUMENT",
+ "createdAt": "ISO-8601",
+ "updatedAt": "ISO-8601"
+ }
+ ],
+ "pagination": {
+ "page": 1,
+ "pageSize": 20,
+ "total": 1,
+ "totalPages": 1
+ }
 }
 ```
 

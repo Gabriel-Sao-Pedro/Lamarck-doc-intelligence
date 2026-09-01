@@ -183,7 +183,7 @@ Com essa decisão:
 - a aplicação precisa manter uma chave de storage;
 - o código precisa tratar falhas entre storage e banco;
 - trocar para S3 no futuro deve exigir principalmente um novo adapter, não uma
-  reescrita das regras do sistema.
+ reescrita das regras do sistema.
 
 ---
 

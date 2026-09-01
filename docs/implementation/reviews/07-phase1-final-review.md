@@ -481,17 +481,17 @@ Fluxo final:
 
 ```text
 versionar esta review humana
-        ↓
+ ↓
 push chore/phase1-closure
-        ↓
+ ↓
 CI verde
-        ↓
+ ↓
 merge --ff-only em main
-        ↓
+ ↓
 push main
-        ↓
+ ↓
 CI main verde
-        ↓
+ ↓
 FASE 1 ENCERRADA
 ```
 
@@ -500,18 +500,18 @@ Depois disso, não há feature obrigatória pendente dentro da Fase 1.
 Estado esperado:
 
 ```text
-Foundation                         ✅
-Ingestão                           ✅
-Processing                         ✅
-Retry / lease / fencing            ✅
-Consulta                           ✅
-Vertical slice E2E                 ✅
-Fresh clone                        ✅
-README                             ✅
-Rastreabilidade IA                 ✅
-Reviews humanas                    ✅
-Auditoria final                    ✅
-main CI                            ⏳ após merge
+Foundation ✅
+Ingestão ✅
+Processing ✅
+Retry / lease / fencing ✅
+Consulta ✅
+Vertical slice E2E ✅
+Fresh clone ✅
+README ✅
+Rastreabilidade IA ✅
+Reviews humanas ✅
+Auditoria final ✅
+main CI ⏳ após merge
 ```
 
 Com a CI de `main` verde após o merge:

@@ -29,25 +29,17 @@ Isso dificulta investigar erros e comparar mudanças futuras.
 
 ## Decisão
 
-Cada tentativa iniciada será registrada em um novo `ProcessingRun`.
+Cada execução do processamento será registrada como um novo
+`ProcessingRun`.
+
+Um `ProcessingRun` representa uma tentativa ou execução específica.
 
 Depois de finalizado, esse registro não deve ser alterado para fingir que a
 execução aconteceu de outra forma.
 
-Se o documento for processado novamente, serão criados novos runs.
+Se o documento for processado novamente, será criado outro `ProcessingRun`.
 
 O histórico anterior continua existindo.
-
-O `ProcessingJob.attemptCount` será a fonte de verdade operacional para decidir
-se outra tentativa ainda pode começar.
-
-Quando uma tentativa começa, esse contador é incrementado de forma atômica e o
-novo `ProcessingRun` recebe o mesmo número em `attemptNumber`.
-
-Assim, o job controla o limite de tentativas e o run preserva o histórico do
-que realmente aconteceu.
-
-Não vou calcular o limite de retry contando `ProcessingRun`s.
 
 ---
 
@@ -123,11 +115,6 @@ Nesse caso, não quero guardar apenas a terceira tentativa.
 
 As duas falhas anteriores ajudam a entender o comportamento do sistema.
 
-O número de tentativa gravado no `ProcessingRun` deve vir do mesmo incremento
-do `ProcessingJob.attemptCount` que autorizou aquela tentativa.
-
-Dessa forma, não quero manter dois contadores independentes.
-
 A mesma ideia vale se o processamento terminar em `FAILED`.
 
 ---
@@ -165,7 +152,7 @@ Não escolhi porque faria o histórico depender do estado atual do registro.
 Uma atualização errada poderia apagar informações úteis sobre uma execução
 anterior.
 
-### Criar um novo registro por tentativa
+### Criar um novo registro por execução
 
 Foi a opção escolhida.
 
@@ -182,8 +169,6 @@ Com essa decisão:
 - retries podem ser investigados;
 - mudanças de modelo e prompt ficam rastreáveis;
 - reprocessamento não apaga o passado;
-- o limite de retry usa `ProcessingJob.attemptCount`;
-- cada run recebe o número da tentativa que realmente começou;
 - a quantidade de registros cresce com o tempo;
 - consultas precisam diferenciar histórico de resultado atual.
 

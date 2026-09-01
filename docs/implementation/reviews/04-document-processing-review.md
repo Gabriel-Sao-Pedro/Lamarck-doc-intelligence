@@ -16,8 +16,8 @@ Mesmo com a CI verde, não considero seguro aprovar enquanto `PROC-001` e `PROC-
 - **HEAD:** `ee76395d2c8e7e0d1ae911d61f2797538603928b`
 - **Base:** `533f54d`
 - **Commits revisados:**
-  - `d126642` — implementação do processamento;
-  - `ee76395` — relatório da implementação.
+ - `d126642` — implementação do processamento;
+ - `ee76395` — relatório da implementação.
 - **CI:** run `33453856692` — `SUCCESS`
 - **Working tree:** limpa
 
@@ -55,8 +55,8 @@ Também confirmei que o nome padronizado ficou fora desta etapa, conforme o plan
 
 ### PROC-001 — falha final grava `PROCESSING -> FAILED` diretamente
 
-**Severidade:** ALTO  
-**Status:** CONFIRMADO  
+**Severidade:** ALTO 
+**Status:** CONFIRMADO 
 **Arquivos principais:** `src/processing/finalization.service.ts` e `src/processing/job-claim.service.ts`
 
 A arquitetura define estas transições:
@@ -82,8 +82,8 @@ O problema não é apenas visual. Essa diferença pode prejudicar auditoria, con
 
 ### PROC-002 — finalização confia em IDs que não são vinculados ao job claimado
 
-**Severidade:** ALTO  
-**Status:** CONFIRMADO  
+**Severidade:** ALTO 
+**Status:** CONFIRMADO 
 **Arquivo principal:** `src/processing/finalization.service.ts`
 
 O fencing atual valida corretamente:
@@ -118,8 +118,8 @@ DocumentResult
 
 ### PROC-003 — intervalo do worker não é sanitizado
 
-**Severidade:** BAIXO  
-**Status:** CONFIRMADO  
+**Severidade:** BAIXO 
+**Status:** CONFIRMADO 
 **Arquivos principais:** `src/processing/processing.constants.ts` e `src/processing/processing.worker.ts`
 
 O intervalo configurado pelo ambiente é convertido com `Number(...)`, mas não há validação para `NaN`, zero ou valor negativo.
@@ -239,15 +239,15 @@ Depois:
 
 ```text
 correções
-        ↓
+ ↓
 testes específicos
-        ↓
+ ↓
 suíte completa
-        ↓
+ ↓
 CI
-        ↓
+ ↓
 checagem humana focada
-        ↓
+ ↓
 merge em main
 ```
 

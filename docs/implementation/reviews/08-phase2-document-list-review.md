@@ -87,8 +87,8 @@ Também validei empiricamente os principais casos de borda dos query params e o 
 
 ### LIST-001 — prompt 08 foi renomeado durante o move
 
-**Severidade:** BAIXO  
-**Status:** CONFIRMADO  
+**Severidade:** BAIXO 
+**Status:** CONFIRMADO 
 **Impacto funcional:** nenhum
 
 O prompt 08 foi inicialmente salvo com o nome:
@@ -118,7 +118,7 @@ O impacto é apenas de nomenclatura e rastreabilidade: alguém procurando pelo n
 Preferência:
 
 ```bash
-git mv   docs/ai/prompts/claude/08-claude-document-list-prompt.md   docs/ai/prompts/claude/08-claude-phase2-document-list-prompt.md
+git mv docs/ai/prompts/claude/08-claude-document-list-prompt.md docs/ai/prompts/claude/08-claude-phase2-document-list-prompt.md
 ```
 
 Sem modificar o conteúdo.

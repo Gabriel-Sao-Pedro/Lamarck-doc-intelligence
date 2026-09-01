@@ -111,11 +111,11 @@ Quando ainda não existir resultado:
 
 ```json
 {
-  "documentId": "...",
-  "status": "PROCESSING",
-  "createdAt": "...",
-  "updatedAt": "...",
-  "result": null
+ "documentId": "...",
+ "status": "PROCESSING",
+ "createdAt": "...",
+ "updatedAt": "...",
+ "result": null
 }
 ```
 
@@ -127,11 +127,11 @@ Quando estiver em `FAILED` e não houver resultado útil:
 
 ```json
 {
-  "documentId": "...",
-  "status": "FAILED",
-  "createdAt": "...",
-  "updatedAt": "...",
-  "result": null
+ "documentId": "...",
+ "status": "FAILED",
+ "createdAt": "...",
+ "updatedAt": "...",
+ "result": null
 }
 ```
 

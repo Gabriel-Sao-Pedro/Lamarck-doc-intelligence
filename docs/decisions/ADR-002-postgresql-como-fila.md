@@ -31,23 +31,13 @@ Vou usar o próprio PostgreSQL como fila de processamento na primeira versão.
 Os jobs ficarão registrados no banco e os workers buscarão os trabalhos
 disponíveis diretamente nele.
 
-`Document` e `ProcessingJob` serão criados juntos na mesma transação. Assim,
-não quero deixar um documento salvo em `RECEIVED` sem um job associado caso a
-segunda operação falhe.
-
-Cada job terá informações suficientes para controlar:
+A ideia é que cada job tenha informações suficientes para controlar:
 
 - se está disponível;
-- quantas tentativas já começaram;
+- quantas tentativas já aconteceram;
 - qual worker pegou o trabalho;
 - quando o trabalho foi pego;
 - até quando aquele claim continua válido.
-
-O campo `attemptCount` do `ProcessingJob` será a fonte de verdade operacional
-para decidir se uma nova tentativa ainda pode começar.
-
-Cada tentativa iniciada também gera um `ProcessingRun` com o mesmo número, mas
-o histórico não será usado para calcular o limite de retry.
 
 Também quero garantir que dois workers não processem o mesmo job ao mesmo tempo.
 
@@ -87,24 +77,15 @@ porque dois workers poderiam encontrar o mesmo registro ao mesmo tempo.
 A ideia é usar o controle de concorrência do PostgreSQL para que um worker
 consiga pegar um job de forma exclusiva e os outros sigam para outro trabalho.
 
-A implementação usará uma estratégia baseada em:
+A implementação provavelmente usará uma estratégia com:
 
 `FOR UPDATE SKIP LOCKED`
-
-O claim deve ser uma operação curta.
-
-Dentro dele, a aplicação deve manter consistentes:
-
-- o job que foi reivindicado;
-- o incremento de `attemptCount`;
-- o `ProcessingRun` da nova tentativa;
-- a mudança do documento para `PROCESSING`.
 
 Não quero manter esse lock enquanto o documento estiver sendo processado.
 
 O lock serve somente para o momento de escolher e marcar o job.
 
-Depois disso, a transação termina.
+Depois disso, a transação deve terminar.
 
 O processamento com o provider acontece fora dessa transação.
 
@@ -118,40 +99,10 @@ Por isso, o job terá um tempo de validade para o claim.
 
 Se esse tempo expirar, outro worker poderá recuperar o trabalho.
 
-Não vou criar um processo separado apenas para limpar leases vencidos nesta
-primeira versão.
-
-A própria busca de trabalho do próximo worker será o gatilho para encontrar
-jobs com lease expirado.
-
-Ao encontrar um deles, a aplicação encerra a tentativa anterior como falha
-técnica.
-
-Se ainda houver tentativa disponível, aplica:
-
-`PROCESSING -> RETRYING -> PROCESSING`
-
-e inicia uma nova tentativa.
-
-Se o limite de três tentativas já tiver sido atingido:
-
-`PROCESSING -> RETRYING -> FAILED`
-
-Até essa verificação acontecer, o documento pode continuar aparecendo como
-`PROCESSING`, mas o lease vencido indica que o job já pode ser recuperado.
-
-Quando a tentativa já tiver começado e o worker desaparecer, essa tentativa
-conta dentro do limite total.
+Quando a tentativa já tiver começado e o worker desaparecer, vou considerar isso
+uma falha técnica e essa tentativa contará dentro do limite total.
 
 Isso evita deixar jobs presos para sempre e também evita tentativas infinitas.
-
-O tempo de lease deverá ser maior que o timeout configurado para o provider,
-com uma margem de segurança, para não tratar um processamento normal e lento
-como worker morto.
-
-Um worker que perdeu seu lease não poderá finalizar livremente depois. Antes de
-gravar o resultado final, a aplicação deve confirmar que aquele claim ainda é
-válido.
 
 ---
 
@@ -200,9 +151,7 @@ Com essa decisão:
 - os jobs sobrevivem a reinicializações;
 - preciso tomar cuidado com concorrência;
 - preciso manter transações curtas;
-- o banco passa a receber também carga relacionada à fila;
-- `attemptCount` precisa ser atualizado de forma atômica quando a tentativa começa;
-- leases vencidos serão recuperados pela própria busca de trabalho.
+- o banco passa a receber também carga relacionada à fila.
 
 Isso funciona bem para a escala inicial, mas não significa que PostgreSQL será
 a melhor fila para sempre.
