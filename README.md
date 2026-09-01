@@ -256,6 +256,21 @@ Ordenação por `createdAt` decrescente (mais recente primeiro). A resposta
 não inclui campos extraídos nem detalhes de infraestrutura — só o resumo
 de cada documento.
 
+### 5. Consulte a fila de revisão humana
+
+```bash
+curl -H "X-API-Key: change-me" "http://localhost:3000/reviews?page=1&pageSize=20"
+```
+
+Lista somente documentos em `NEEDS_REVIEW`, ordenados por `createdAt`
+**crescente** (mais antigo primeiro) — é uma fila de trabalho, não um
+histórico, então o item mais velho é o que deveria ser revisado primeiro.
+`page`/`pageSize` seguem os mesmos defaults e limites de `GET /documents`.
+Cada item inclui o `result` que levou o documento a `NEEDS_REVIEW`.
+
+Esta é só a listagem (Fase 3.1) — ainda não existe claim de revisor, lease
+ou correção de campos.
+
 ## Documentação da API
 
 Com a aplicação rodando, o contrato HTTP fica disponível em:
@@ -263,9 +278,9 @@ Com a aplicação rodando, o contrato HTTP fica disponível em:
 - [`http://localhost:3000/docs`](http://localhost:3000/docs) — Swagger UI;
 - [`http://localhost:3000/docs-json`](http://localhost:3000/docs-json) — documento OpenAPI em JSON.
 
-As três rotas de `/documents` exigem `X-API-Key` — o botão **Authorize** no
-Swagger UI pede a chave uma vez e a reaplica em cada chamada de teste feita
-pela própria UI.
+As rotas de `/documents` e `/reviews` exigem `X-API-Key` — o botão
+**Authorize** no Swagger UI pede a chave uma vez e a reaplica em cada
+chamada de teste feita pela própria UI.
 
 ## Scripts
 
