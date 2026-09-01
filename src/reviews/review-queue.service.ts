@@ -5,12 +5,7 @@ import { DocumentStatus } from '../generated/prisma/enums.js';
 import type { ReviewQueueQuery } from './dto/review-queue-query.dto.js';
 import type { ReviewQueueResponseDto } from './dto/review-queue-response.dto.js';
 
-/**
- * Somente leitura (Fase 3.1). Sem claim, sem lease, sem escrita — só
- * apresenta a fila. Ordenação createdAt ASC + id ASC: FIFO real, diferente
- * de GET /documents (mais recente primeiro), porque aqui o objetivo é
- * trabalho pendente, não histórico.
- */
+/
 @Injectable()
 export class ReviewQueueService {
   constructor(private readonly prisma: PrismaService) {}
@@ -49,10 +44,7 @@ export class ReviewQueueService {
     };
   }
 
-  // Uma query só para a página inteira (não N+1): busca todos os
-  // DocumentResult dos ids da página, mais recente primeiro, e fica com a
-  // primeira ocorrência por documentId — mesma regra de
-  // document-query.service.ts#loadResult.
+
   private async loadLatestResults(documentIds: string[]): Promise<Map<string, DocumentResultResponseDto>> {
     if (documentIds.length === 0) return new Map();
 
