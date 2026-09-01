@@ -12,7 +12,8 @@ A vertical slice principal está funcional. A API já suporta:
 - processamento assíncrono;
 - consulta individual;
 - listagem paginada com filtro por status;
-- suporte a JPEG, PNG e PDF.
+- suporte a JPEG, PNG e PDF;
+- autenticação simples por API key.
 
 ```
 receber (POST /documents) → processar (worker + provider fake) → persistir → consultar (GET /documents/:id)
@@ -99,6 +100,10 @@ processamento — nenhuma delas precisa ser definida para uso normal:
 | `PROCESSING_WORKER_ENABLED` | `true` | `false` desliga o loop de processamento em segundo plano (usado pelos testes e2e, para controle determinístico) |
 | `PROCESSING_WORKER_POLL_INTERVAL_MS` | `1000` | Intervalo de polling do worker quando não há job pendente. Valores inválidos (ausente, `0`, negativo, decimal, texto) caem nesse default automaticamente |
 
+`API_KEY` (documentada em `.env.example`) é **obrigatória** — a aplicação
+recusa subir sem ela. É a chave exigida no header `X-API-Key` para acessar
+qualquer rota de `/documents` (ver seção seguinte).
+
 ## Enviando e consultando um documento (vertical slice)
 
 Com a aplicação rodando (`npm run start:dev`), a API aceita arquivos
@@ -106,6 +111,10 @@ Com a aplicação rodando (`npm run start:dev`), a API aceita arquivos
 identidade fictício. O tipo do arquivo é validado pelo conteúdo real (magic
 bytes — incluindo a assinatura `%PDF-` para PDF), não pela extensão nem pelo
 `Content-Type` declarado no upload.
+
+Toda rota abaixo exige o header `X-API-Key` com o valor de `API_KEY`
+configurado no `.env`. Sem o header, com header vazio ou com chave errada, a
+resposta é sempre `401 Unauthorized`.
 
 ### 1. Envie um documento
 
@@ -127,8 +136,10 @@ require('fs').writeFileSync('fixture.png', png);
 Envie por `multipart/form-data`, campo `file`:
 
 ```bash
-curl -F "file=@fixture.png;type=image/png" http://localhost:3000/documents
+curl -H "X-API-Key: change-me" -F "file=@fixture.png;type=image/png" http://localhost:3000/documents
 ```
+
+(No PowerShell, use `curl.exe -H "X-API-Key: change-me" -F "file=@fixture.png;type=image/png" http://localhost:3000/documents` — `curl` sozinho é um alias de `Invoke-WebRequest`.)
 
 Resposta (`202 Accepted`):
 
@@ -151,7 +162,7 @@ em alguns segundos, dependendo do intervalo de polling
 ### 3. Consulte o resultado
 
 ```bash
-curl http://localhost:3000/documents/<documentId>
+curl -H "X-API-Key: change-me" http://localhost:3000/documents/<documentId>
 ```
 
 Sempre responde `200 OK` (o estado do processamento vive no corpo, não no
@@ -197,7 +208,7 @@ Consulte novamente até o `status` chegar a `COMPLETED`, `NEEDS_REVIEW` ou
 ### 4. Liste os documentos
 
 ```bash
-curl "http://localhost:3000/documents?page=1&pageSize=20&status=COMPLETED"
+curl -H "X-API-Key: change-me" "http://localhost:3000/documents?page=1&pageSize=20&status=COMPLETED"
 ```
 
 Todos os parâmetros são opcionais:
@@ -276,7 +287,8 @@ concorrência real (`FOR UPDATE SKIP LOCKED`, fencing por `claimToken`,
 corrida de deduplicação). O worker de processamento fica desabilitado
 automaticamente durante essa suíte (`PROCESSING_WORKER_ENABLED=false`, ver
 `test/setup-e2e.ts`), para que os testes controlem claim/processamento de
-forma determinística.
+forma determinística. O mesmo arquivo define uma `API_KEY` fictícia
+(`test-api-key`) para a suíte não depender de nenhum segredo externo.
 
 ## Limitações da Fase 1
 
@@ -287,7 +299,9 @@ Deliberadamente fora desta entrega (ver `docs/specification.md` §21–§25 e
 - extração feita por um **provider fake determinístico** — nenhum modelo de
   IA real está integrado nesta fase, incluindo para PDF (sem OCR/parser real,
   ver `docs/implementation/009-phase2-pdf-support.md`);
-- sem autenticação;
+- autenticação é uma única API key compartilhada por header (`X-API-Key`),
+  pensada para comunicação service-to-service — sem login, sessão, JWT,
+  OAuth ou usuários individuais;
 - sem fila de revisão humana operacional (o resultado de `NEEDS_REVIEW` é
   preservado no banco, mas não há endpoint/fluxo de correção humana ainda);
 - sem sugestão de nome padronizado de arquivo (planejado para uma fase
