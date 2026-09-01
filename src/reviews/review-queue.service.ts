@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service.js';
 import type { DocumentResultFieldsDto, DocumentResultResponseDto } from '../documents/dto/document-query-response.dto.js';
+import { DocumentStatus } from '../generated/prisma/enums.js';
 import type { ReviewQueueQuery } from './dto/review-queue-query.dto.js';
 import type { ReviewQueueResponseDto } from './dto/review-queue-response.dto.js';
-
-const NEEDS_REVIEW = 'NEEDS_REVIEW';
 
 /**
  * Somente leitura (Fase 3.1). Sem claim, sem lease, sem escrita — só
@@ -17,7 +16,7 @@ export class ReviewQueueService {
   constructor(private readonly prisma: PrismaService) {}
 
   async list(query: ReviewQueueQuery): Promise<ReviewQueueResponseDto> {
-    const where = { status: NEEDS_REVIEW } as const;
+    const where = { status: DocumentStatus.NEEDS_REVIEW };
 
     const [total, documents] = await this.prisma.$transaction([
       this.prisma.document.count({ where }),
