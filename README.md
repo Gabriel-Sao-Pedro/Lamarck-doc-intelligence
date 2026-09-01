@@ -4,7 +4,15 @@ Backend do desafio Lamarck DOC Intelligence: receber documentos, processá-los
 de forma assíncrona por um worker e expor o resultado extraído por uma API
 REST.
 
-**Status: vertical slice mínima da Fase 1 completa.**
+**Status: Fase 2 em andamento.**
+
+A vertical slice principal está funcional. A API já suporta:
+
+- upload de documentos;
+- processamento assíncrono;
+- consulta individual;
+- listagem paginada com filtro por status;
+- suporte a JPEG, PNG e PDF.
 
 ```
 receber (POST /documents) → processar (worker + provider fake) → persistir → consultar (GET /documents/:id)
@@ -185,6 +193,57 @@ Exemplo de resposta em `COMPLETED`:
 Consulte novamente até o `status` chegar a `COMPLETED`, `NEEDS_REVIEW` ou
 `FAILED` (com o intervalo padrão de polling, isso normalmente acontece em
 1–2 segundos).
+
+### 4. Liste os documentos
+
+```bash
+curl "http://localhost:3000/documents?page=1&pageSize=20&status=COMPLETED"
+```
+
+Todos os parâmetros são opcionais:
+
+| Parâmetro | Default | Regra |
+|---|---|---|
+| `page` | `1` | inteiro `>= 1` |
+| `pageSize` | `20` | inteiro entre `1` e `100` |
+| `status` | sem filtro | um dos estados abaixo |
+
+Estados aceitos em `status`:
+
+```text
+RECEIVED
+PROCESSING
+RETRYING
+COMPLETED
+NEEDS_REVIEW
+FAILED
+```
+
+Exemplo de resposta:
+
+```json
+{
+  "items": [
+    {
+      "documentId": "uuid",
+      "status": "COMPLETED",
+      "documentType": "IDENTITY_DOCUMENT",
+      "createdAt": "2026-08-31T...",
+      "updatedAt": "2026-08-31T..."
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "pageSize": 20,
+    "total": 1,
+    "totalPages": 1
+  }
+}
+```
+
+Ordenação por `createdAt` decrescente (mais recente primeiro). A resposta
+não inclui campos extraídos nem detalhes de infraestrutura — só o resumo
+de cada documento.
 
 ## Scripts
 
