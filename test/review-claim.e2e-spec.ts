@@ -11,7 +11,7 @@ import { TEST_API_KEY } from './support/api-key.js';
 import { cleanupDocument, createDocumentWithStatus } from './support/processing-fixtures.js';
 
 const WRONG_API_KEY = 'wrong-api-key';
-const NONEXISTENT_DOCUMENT_ID = '00000000-0000-0000-0000-000000000000';
+const NONEXISTENT_DOCUMENT_ID = '11111111-1111-4111-8111-111111111111';
 
 describe('ReviewClaim (e2e)', () => {
   let app: INestApplication<App>;
@@ -74,6 +74,10 @@ describe('ReviewClaim (e2e)', () => {
   // RC2 — documento inexistente
   it('RC2 — documento inexistente retorna 404', async () => {
     await claimRequest(NONEXISTENT_DOCUMENT_ID, 'reviewer-01').expect(404);
+  });
+
+  it('RC2B — documentId malformado retorna 400', async () => {
+    await claimRequest('not-a-uuid', 'reviewer-01').expect(400);
   });
 
   // RC3 — COMPLETED não pode ser claimado
